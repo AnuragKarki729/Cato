@@ -9,7 +9,10 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://cato-api.up.railway.app"
+        "EXPO_PUBLIC_API_BASE_URL": "https://cato-api.up.railway.app",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://plsmirtnuhrojwztonkt.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_KEY": "sb_publishable_cXUqQwc81ueHgGs4uhASJQ__ezqXU_Q",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "512338045024-5t2gqbag5romr1j30kac4kejnl72h2dl.apps.googleusercontent.com"
       }
     },
     "internal-aab": {
@@ -17,7 +20,10 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://cato-api.up.railway.app"
+        "EXPO_PUBLIC_API_BASE_URL": "https://cato-api.up.railway.app",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://plsmirtnuhrojwztonkt.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_KEY": "sb_publishable_cXUqQwc81ueHgGs4uhASJQ__ezqXU_Q",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "512338045024-5t2gqbag5romr1j30kac4kejnl72h2dl.apps.googleusercontent.com"
       }
     }
   },
