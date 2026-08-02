@@ -1,0 +1,11 @@
+[phases.setup]
+nixPkgs = ["nodejs_20", "libreoffice"]
+
+[phases.install]
+cmds = ["npm install"]
+
+[phases.build]
+cmds = ["npm run build -w @cato/api"]
+
+[start]
+cmd = "npm run start -w @cato/api"
