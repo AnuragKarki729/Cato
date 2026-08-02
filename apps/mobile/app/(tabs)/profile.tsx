@@ -213,6 +213,7 @@ export default function ProfileScreen() {
   const [status, setStatus] = useState<string | null>(null);
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [isBusy, setIsBusy] = useState(false);
+  const [accountTransitionMessage, setAccountTransitionMessage] = useState<string | null>(null);
   const [isUploadingProfileImage, setIsUploadingProfileImage] = useState(false);
   const [name, setName] = useState('');
   const [semesterNumber, setSemesterNumber] = useState<number>(semesters[7].value);
@@ -703,6 +704,7 @@ export default function ProfileScreen() {
     }
 
     setIsBusy(true);
+    setAccountTransitionMessage('Deleting account...');
     setError(null);
 
     try {
@@ -711,13 +713,14 @@ export default function ProfileScreen() {
       router.replace('/(auth)/sign-in');
     } catch (deleteError) {
       setError(deleteError instanceof Error ? deleteError.message : 'Unable to delete account');
-    } finally {
+      setAccountTransitionMessage(null);
       setIsBusy(false);
     }
   }
 
   async function handleLogout() {
     setIsBusy(true);
+    setAccountTransitionMessage('Logging out...');
     setError(null);
 
     try {
@@ -725,7 +728,7 @@ export default function ProfileScreen() {
       router.replace('/(auth)/sign-in');
     } catch (logoutError) {
       setError(logoutError instanceof Error ? logoutError.message : 'Unable to log out');
-    } finally {
+      setAccountTransitionMessage(null);
       setIsBusy(false);
     }
   }
@@ -733,6 +736,7 @@ export default function ProfileScreen() {
   return (
     <Screen scroll scrollBottomPadding={spacing.xxxl} scrollRef={keyboardScroll.scrollRef}>
       <LoadingOverlay message="Uploading profile picture..." visible={isUploadingProfileImage} />
+      <LoadingOverlay message={accountTransitionMessage ?? 'Working...'} visible={Boolean(accountTransitionMessage)} />
       <FullscreenResumeDialog
         downloadUrl={profile?.resume?.secureUrl}
         fileName={profile?.resume?.originalFileName ?? 'resume'}

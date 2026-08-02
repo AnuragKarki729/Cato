@@ -11,7 +11,9 @@ import { colors, controls, radii, spacing, typography } from '../theme';
 
 type RecruiterCandidateSheetProps = {
   candidate: RecruiterCandidate | null;
+  isBookmarking?: boolean;
   onClose: () => void;
+  onToggleBookmark?: (candidate: RecruiterCandidate) => void;
 };
 
 type DialogMode = 'resume' | 'deeper';
@@ -115,7 +117,7 @@ function ResumeDialog({ candidate, onClose }: { candidate: RecruiterCandidate; o
         </View>
         <View style={styles.resumePreview}>
           <Text style={styles.resumeFileName}>{candidate.resumeFileName ?? 'Resume file'}</Text>
-          <Text style={styles.body}>Resume preview is available as a saved file for this POC.</Text>
+          <Text style={styles.body}>Preview opens the generated PDF. Download saves the original file.</Text>
         </View>
         <View style={styles.actions}>
           <Pressable disabled={!candidate.resumePreviewUrl && !candidate.resumeUrl} onPress={handlePreview} style={styles.secondaryButton}>
@@ -131,7 +133,12 @@ function ResumeDialog({ candidate, onClose }: { candidate: RecruiterCandidate; o
   );
 }
 
-export function RecruiterCandidateSheet({ candidate, onClose }: RecruiterCandidateSheetProps) {
+export function RecruiterCandidateSheet({
+  candidate,
+  isBookmarking = false,
+  onClose,
+  onToggleBookmark
+}: RecruiterCandidateSheetProps) {
   const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
   const sheetPanResponder = useRef(
     PanResponder.create({
@@ -166,6 +173,17 @@ export function RecruiterCandidateSheet({ candidate, onClose }: RecruiterCandida
               <Text style={styles.closeText}>Close</Text>
             </Pressable>
           </View>
+          {onToggleBookmark ? (
+            <Pressable
+              disabled={isBookmarking}
+              onPress={() => onToggleBookmark(candidate)}
+              style={[styles.bookmarkAction, candidate.bookmarked ? styles.bookmarkActionActive : null]}
+            >
+              <Text style={[styles.bookmarkActionText, candidate.bookmarked ? styles.bookmarkActionTextActive : null]}>
+                {candidate.bookmarked ? 'Bookmarked' : 'Bookmark'}
+              </Text>
+            </Pressable>
+          ) : null}
           <Text style={styles.sectionTitle}>What's your signal?</Text>
           <Text style={styles.signalText}>{signalText}</Text>
           <Text style={styles.sectionTitle}>Soft skills</Text>
@@ -239,6 +257,26 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     color: colors.text,
     ...typography.label
+  },
+  bookmarkAction: {
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 999,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm
+  },
+  bookmarkActionActive: {
+    borderColor: colors.accent,
+    backgroundColor: colors.accent
+  },
+  bookmarkActionText: {
+    color: colors.text,
+    ...typography.meta
+  },
+  bookmarkActionTextActive: {
+    color: colors.text
   },
   signalText: {
     color: colors.muted,

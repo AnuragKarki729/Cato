@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import type { RecruiterCandidate } from '@cato/shared';
 import { colors, radii, spacing, typography } from '../theme';
@@ -9,15 +10,19 @@ type RecruiterVideoFeedCardProps = {
   height: number;
   isActive: boolean;
   isPaused: boolean;
+  isBookmarking?: boolean;
   onKnowMore: (candidate: RecruiterCandidate) => void;
+  onToggleBookmark?: (candidate: RecruiterCandidate) => void;
 };
 
 export function RecruiterVideoFeedCard({
   candidate,
   height,
   isActive,
+  isBookmarking = false,
   isPaused,
-  onKnowMore
+  onKnowMore,
+  onToggleBookmark
 }: RecruiterVideoFeedCardProps) {
   const player = useVideoPlayer(candidate.tenSecondVideoUrl ?? null, (nextPlayer) => {
     nextPlayer.loop = true;
@@ -59,6 +64,20 @@ export function RecruiterVideoFeedCard({
       <View style={styles.topBadge}>
         <Text style={styles.topBadgeText}>Short take</Text>
       </View>
+      {onToggleBookmark ? (
+        <Pressable
+          accessibilityLabel={candidate.bookmarked ? 'Remove bookmark' : 'Bookmark candidate'}
+          disabled={isBookmarking}
+          onPress={() => onToggleBookmark(candidate)}
+          style={[styles.bookmarkButton, candidate.bookmarked ? styles.bookmarkButtonActive : null]}
+        >
+          <Ionicons
+            color={candidate.bookmarked ? colors.text : colors.primaryText}
+            name={candidate.bookmarked ? 'bookmark' : 'bookmark-outline'}
+            size={20}
+          />
+        </Pressable>
+      ) : null}
       <View style={styles.content}>
         <Text style={styles.name}>{candidate.name ?? 'Applicant'}</Text>
         <Text style={styles.meta}>
@@ -115,6 +134,23 @@ const styles = StyleSheet.create({
   topBadgeText: {
     color: colors.text,
     ...typography.meta
+  },
+  bookmarkButton: {
+    position: 'absolute',
+    top: 56,
+    right: spacing.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 40,
+    height: 40,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.24)',
+    borderRadius: 999,
+    backgroundColor: 'rgba(17,17,17,0.34)'
+  },
+  bookmarkButtonActive: {
+    borderColor: colors.accent,
+    backgroundColor: colors.accent
   },
   content: {
     position: 'absolute',

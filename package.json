@@ -32,5 +32,8 @@
   },
   "dependencies": {
     "color": "^5.0.3"
+  },
+  "devDependencies": {
+    "eas-cli": "^21.4.0"
   }
 }

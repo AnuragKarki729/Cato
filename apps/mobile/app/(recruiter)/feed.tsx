@@ -2,7 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { FlatList, LayoutChangeEvent, StyleSheet, Text, View, ViewToken } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
 import type { RecruiterCandidate } from '@cato/shared';
-import { getRecruiterCandidates } from '../../src/api/recruiter';
+import {
+  bookmarkRecruiterCandidate,
+  deleteRecruiterCandidateBookmark,
+  getRecruiterCandidates
+} from '../../src/api/recruiter';
 import { LoadingScreen } from '../../src/components/LoadingScreen';
 import { Screen } from '../../src/components/Screen';
 import { useSession } from '../../src/hooks/useSession';
@@ -18,6 +22,7 @@ export default function RecruiterFeedScreen() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [feedHeight, setFeedHeight] = useState(0);
+  const [bookmarkingCandidateId, setBookmarkingCandidateId] = useState<string | null>(null);
   const [selectedCandidate, setSelectedCandidate] = useState<RecruiterCandidate | null>(null);
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 82 }).current;
   const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
@@ -52,6 +57,40 @@ export default function RecruiterFeedScreen() {
     }
   }
 
+  async function handleToggleBookmark(candidate: RecruiterCandidate) {
+    if (!session?.access_token || bookmarkingCandidateId) {
+      return;
+    }
+
+    const nextBookmarked = !candidate.bookmarked;
+
+    setBookmarkingCandidateId(candidate.id);
+    setCandidates((current) =>
+      current.map((item) => (item.id === candidate.id ? { ...item, bookmarked: nextBookmarked } : item))
+    );
+    setSelectedCandidate((current) =>
+      current?.id === candidate.id ? { ...current, bookmarked: nextBookmarked } : current
+    );
+
+    try {
+      if (nextBookmarked) {
+        await bookmarkRecruiterCandidate(session.access_token, candidate.id);
+      } else {
+        await deleteRecruiterCandidateBookmark(session.access_token, candidate.id);
+      }
+    } catch (bookmarkError) {
+      setCandidates((current) =>
+        current.map((item) => (item.id === candidate.id ? { ...item, bookmarked: candidate.bookmarked } : item))
+      );
+      setSelectedCandidate((current) =>
+        current?.id === candidate.id ? { ...current, bookmarked: candidate.bookmarked } : current
+      );
+      setError(bookmarkError instanceof Error ? bookmarkError.message : 'Unable to update bookmark');
+    } finally {
+      setBookmarkingCandidateId(null);
+    }
+  }
+
   if (!session?.access_token) {
     return <LoadingScreen banner="Loading recruiter feed" />;
   }
@@ -80,8 +119,10 @@ export default function RecruiterFeedScreen() {
                 candidate={item}
                 height={feedHeight}
                 isActive={index === activeIndex}
+                isBookmarking={bookmarkingCandidateId === item.id}
                 isPaused={!isFocused || Boolean(selectedCandidate)}
                 onKnowMore={setSelectedCandidate}
+                onToggleBookmark={handleToggleBookmark}
               />
             )}
             scrollEventThrottle={16}
@@ -92,7 +133,12 @@ export default function RecruiterFeedScreen() {
           />
         ) : null}
       </View>
-      <RecruiterCandidateSheet candidate={selectedCandidate} onClose={() => setSelectedCandidate(null)} />
+      <RecruiterCandidateSheet
+        candidate={selectedCandidate}
+        isBookmarking={Boolean(selectedCandidate && bookmarkingCandidateId === selectedCandidate.id)}
+        onClose={() => setSelectedCandidate(null)}
+        onToggleBookmark={handleToggleBookmark}
+      />
     </Screen>
   );
 }

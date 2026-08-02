@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { deleteRecruiterAccount } from '../../src/api/recruiter';
+import { LoadingOverlay } from '../../src/components/LoadingOverlay';
 import { RecruiterContent } from '../../src/recruiter/RecruiterContent';
 import { supabase } from '../../src/lib/supabase';
 import { useSession } from '../../src/hooks/useSession';
@@ -10,11 +11,20 @@ import { colors, controls, radii, spacing, typography } from '../../src/theme';
 export default function RecruiterUpgradeScreen() {
   const { session } = useSession();
   const [error, setError] = useState<string | null>(null);
+  const [transitionMessage, setTransitionMessage] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   async function handleLogout() {
-    await supabase.auth.signOut();
-    router.replace('/(auth)/sign-in');
+    setTransitionMessage('Logging out...');
+    setError(null);
+
+    try {
+      await supabase.auth.signOut();
+      router.replace('/(auth)/sign-in');
+    } catch (logoutError) {
+      setError(logoutError instanceof Error ? logoutError.message : 'Unable to log out');
+      setTransitionMessage(null);
+    }
   }
 
   async function handleDeleteAccount() {
@@ -23,6 +33,7 @@ export default function RecruiterUpgradeScreen() {
     }
 
     setIsDeleting(true);
+    setTransitionMessage('Deleting account...');
     setError(null);
 
     try {
@@ -31,13 +42,28 @@ export default function RecruiterUpgradeScreen() {
       router.replace('/(auth)/sign-in');
     } catch (deleteError) {
       setError(deleteError instanceof Error ? deleteError.message : 'Unable to delete recruiter account');
-    } finally {
+      setTransitionMessage(null);
       setIsDeleting(false);
     }
   }
 
+  function confirmLogout() {
+    Alert.alert('Log out?', 'You will return to the welcome screen.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Confirm', onPress: handleLogout }
+    ]);
+  }
+
+  function confirmDeleteAccount() {
+    Alert.alert('Delete account?', 'This deletes your recruiter account. This cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Confirm', onPress: handleDeleteAccount, style: 'destructive' }
+    ]);
+  }
+
   return (
     <RecruiterContent>
+      <LoadingOverlay message={transitionMessage ?? 'Working...'} visible={Boolean(transitionMessage)} />
       <Text style={styles.title}>Upgrade Plan</Text>
       <Text style={styles.body}>Unlock unlimited access and advanced tools.</Text>
       <View style={styles.plan}>
@@ -50,10 +76,10 @@ export default function RecruiterUpgradeScreen() {
       <Pressable style={styles.button}>
         <Text style={styles.buttonText}>Upgrade Now</Text>
       </Pressable>
-      <Pressable onPress={handleLogout} style={styles.logoutButton}>
+      <Pressable disabled={Boolean(transitionMessage)} onPress={confirmLogout} style={styles.logoutButton}>
         <Text style={styles.logoutButtonText}>Log out</Text>
       </Pressable>
-      <Pressable disabled={isDeleting} onPress={handleDeleteAccount} style={styles.deleteButton}>
+      <Pressable disabled={isDeleting || Boolean(transitionMessage)} onPress={confirmDeleteAccount} style={styles.deleteButton}>
         <Text style={styles.deleteButtonText}>{isDeleting ? 'Deleting...' : 'Delete account'}</Text>
       </Pressable>
       {error ? <Text style={styles.error}>{error}</Text> : null}

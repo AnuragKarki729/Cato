@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "8c6b942e-11cb-43e3-b6fc-9a2740c80fb4"
+      }
+    },
+    "android": {
+      "package": "com.cato.poc"
+    }
+  }
+}

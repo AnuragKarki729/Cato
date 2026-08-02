@@ -19,6 +19,7 @@ export function FullscreenResumeDialog({ downloadUrl, fileName, onClose, url, vi
   const [error, setError] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const resolvedDownloadUrl = downloadUrl ?? url;
+  const viewerUrl = url ? `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(url)}` : undefined;
 
   async function handleDownload() {
     if (!resolvedDownloadUrl) {
@@ -54,11 +55,11 @@ export function FullscreenResumeDialog({ downloadUrl, fileName, onClose, url, vi
           </Pressable>
         </View>
         <View style={styles.viewer}>
-          {url ? (
+          {viewerUrl ? (
             <WebView
               onError={() => setError('Unable to load resume preview. You can still download the file.')}
               originWhitelist={['*']}
-              source={{ uri: url }}
+              source={{ uri: viewerUrl }}
               startInLoadingState
               style={styles.webView}
             />
@@ -89,7 +90,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
     backgroundColor: colors.background,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xxl,
+    paddingTop: 56,
     paddingBottom: spacing.lg
   },
   headerButton: {

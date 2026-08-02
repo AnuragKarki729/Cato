@@ -3,6 +3,7 @@
 .env.*
 !.env.example
 client_secret_*.apps.googleusercontent.com.json
+android_client_secret_*.apps.googleusercontent.com.json
 
 # Dependencies
 node_modules/
@@ -20,6 +21,8 @@ build/
 .expo/
 .expo-shared/
 web-build/
+*.aab
+*.apk
 
 # React Native / Expo
 android/.gradle/

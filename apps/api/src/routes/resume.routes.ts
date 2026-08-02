@@ -99,8 +99,8 @@ export async function resumeRoutes(app: FastifyInstance) {
         parsed.data.fileType === 'pdf'
           ? null
           : await uploadResumePreviewPdfToCloudinary({
-              dataUri: await convertResumeDataUriToPdfDataUri(parsed.data.dataUri, parsed.data.fileType),
-              publicId: `${upload.public_id.split('/').pop() ?? 'resume'}_preview`,
+            dataUri: await convertResumeDataUriToPdfDataUri(parsed.data.dataUri, parsed.data.fileType),
+              publicId: `${upload.public_id.split('/').pop() ?? 'resume'}_preview.pdf`,
               supabaseUserId: user.id
             });
     } catch (conversionError) {

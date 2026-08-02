@@ -1,9 +1,14 @@
 import { makeRedirectUri } from 'expo-auth-session';
 import Constants from 'expo-constants';
 import * as WebBrowser from 'expo-web-browser';
+import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 
 WebBrowser.maybeCompleteAuthSession();
+
+type GoogleSigninModule = typeof import('@react-native-google-signin/google-signin');
+
+let nativeGoogleConfigured = false;
 
 function describeUrl(value: string) {
   const url = new URL(value);
@@ -30,6 +35,66 @@ function getSearchParamKeys(params: URLSearchParams) {
 }
 
 export async function signInWithGoogle() {
+  if (Platform.OS === 'android') {
+    return signInWithNativeGoogle();
+  }
+
+  return signInWithSupabaseOAuth();
+}
+
+async function signInWithNativeGoogle() {
+  const googleWebClientId =
+    process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ??
+    (Constants.expoConfig?.extra?.googleWebClientId as string | undefined);
+
+  if (!googleWebClientId) {
+    throw new Error('Missing Google web client ID for Android sign-in');
+  }
+
+  const { GoogleSignin } = (await import('@react-native-google-signin/google-signin')) as GoogleSigninModule;
+
+  if (!nativeGoogleConfigured) {
+    GoogleSignin.configure({
+      scopes: ['email', 'profile'],
+      webClientId: googleWebClientId
+    });
+    nativeGoogleConfigured = true;
+  }
+
+  await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+
+  // Force the account picker so Android matches the current "choose account" UX.
+  await GoogleSignin.signOut().catch(() => null);
+
+  const response = await GoogleSignin.signIn();
+
+  if (response.type === 'cancelled') {
+    return;
+  }
+
+  const idToken = response.data.idToken;
+
+  if (!idToken) {
+    throw new Error('Google did not return an ID token');
+  }
+
+  const { data, error } = await supabase.auth.signInWithIdToken({
+    provider: 'google',
+    token: idToken
+  });
+
+  if (error) {
+    console.error('[oauth-debug] native Google signInWithIdToken error:', error.message);
+    throw error;
+  }
+
+  console.log('[oauth-debug] native Google sign-in success:', {
+    hasSession: Boolean(data.session),
+    userId: data.session?.user.id
+  });
+}
+
+async function signInWithSupabaseOAuth() {
   const isExpoGo = Constants.appOwnership === 'expo';
   const redirectTo = isExpoGo
     ? makeRedirectUri({
