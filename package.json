@@ -1,0 +1,36 @@
+{
+  "name": "cato",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=20 <22",
+    "npm": ">=10"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "overrides": {
+    "@expo/metro-runtime": "^6.1.2",
+    "expo-constants": "~18.0.13",
+    "expo-router": "~6.0.24",
+    "@types/react": "19.1.10",
+    "react": "19.1.0",
+    "react-native": "0.81.5"
+  },
+  "scripts": {
+    "dev:api": "npm run dev -w @cato/api",
+    "dev:mobile": "npm run start -w @cato/mobile",
+    "preflight:api": "npm run preflight -w @cato/api",
+    "smoke:api": "npm run smoke -w @cato/api",
+    "smoke:api:auth": "npm run smoke:auth -w @cato/api",
+    "smoke:api:disposable": "npm run smoke:disposable -w @cato/api",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "verify": "npm run typecheck && npm run build && npm run verify:mobile-config",
+    "verify:mobile-config": "npm exec -w @cato/mobile -- expo config --type public"
+  },
+  "dependencies": {
+    "color": "^5.0.3"
+  }
+}
