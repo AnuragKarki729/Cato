@@ -1,4 +1,7 @@
 import type {
+  ApplicantInterestRequestsResponse,
+  ApplicantActivityResponse,
+  ApplicantProjectResponse,
   CompleteProfileRequest,
   CompleteProfileImageUploadRequest,
   InternshipResponse,
@@ -6,6 +9,8 @@ import type {
   PrepareProfileImageUploadResponse,
   ProfileResponse,
   ProfileImageSource,
+  RespondToInterestRequest,
+  SaveApplicantProjectRequest,
   SaveEducationRequest,
   SaveInternshipRequest,
   SaveEducationResponse,
@@ -74,12 +79,47 @@ export function deleteInternship(accessToken: string, internshipId: string) {
   });
 }
 
+export function createProject(accessToken: string, body: SaveApplicantProjectRequest) {
+  return apiPost<ApplicantProjectResponse>('/profile/projects', accessToken, body);
+}
+
+export function updateProject(accessToken: string, projectId: string, body: SaveApplicantProjectRequest) {
+  return apiRequest<ApplicantProjectResponse>(`/profile/projects/${projectId}`, {
+    method: 'PATCH',
+    accessToken,
+    body
+  });
+}
+
+export function deleteProject(accessToken: string, projectId: string) {
+  return apiRequest<{ deleted: true }>(`/profile/projects/${projectId}`, {
+    method: 'DELETE',
+    accessToken
+  });
+}
+
 export function updateSoftSkills(accessToken: string, body: SoftSkillUpdateRequest) {
   return apiRequest<SoftSkillOutputResponse>('/profile/soft-skills', {
     method: 'PATCH',
     accessToken,
     body
   });
+}
+
+export function getApplicantInterestRequests(accessToken: string) {
+  return apiGet<ApplicantInterestRequestsResponse>('/applicant/interest-requests', accessToken);
+}
+
+export function getApplicantActivity(accessToken: string) {
+  return apiGet<ApplicantActivityResponse>('/applicant/activity', accessToken);
+}
+
+export function respondToApplicantInterestRequest(accessToken: string, requestId: string, body: RespondToInterestRequest) {
+  return apiPost<{ request: ApplicantInterestRequestsResponse['requests'][number] }>(
+    `/applicant/interest-requests/${requestId}/respond`,
+    accessToken,
+    body
+  );
 }
 
 export function deleteAccount(accessToken: string) {

@@ -1,5 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View
+} from 'react-native';
 import { router } from 'expo-router';
 import { semesters } from '@cato/shared';
 import type { University } from '@cato/shared';
@@ -8,8 +18,20 @@ import { Screen } from '../../src/components/Screen';
 import { useSession } from '../../src/hooks/useSession';
 import { colors, controls, radii, spacing, typography } from '../../src/theme';
 
+const semesterOptions = semesters.map((semester) => ({
+  ...semester,
+  displayLabel: getSemesterDisplayLabel(semester.label)
+}));
+
+const semesterPages = [
+  semesterOptions.slice(0, 8),
+  semesterOptions.slice(8)
+];
+
 export default function EducationScreen() {
   const { session } = useSession();
+  const { width } = useWindowDimensions();
+  const semesterScrollRef = useRef<ScrollView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isMatchedFromEmail, setIsMatchedFromEmail] = useState(false);
@@ -17,12 +39,25 @@ export default function EducationScreen() {
   const [universities, setUniversities] = useState<University[]>([]);
   const [selectedUniversity, setSelectedUniversity] = useState<University | null>(null);
   const [semesterNumber, setSemesterNumber] = useState<number>(semesters[0].value);
+  const [semesterPage, setSemesterPage] = useState(0);
+  const [semesterCarouselWidth, setSemesterCarouselWidth] = useState(0);
   const [hasMoreUniversities, setHasMoreUniversities] = useState(false);
 
   const selectedSemester = useMemo(
     () => semesters.find((semester) => semester.value === semesterNumber) ?? semesters[0],
     [semesterNumber]
   );
+  const semesterPageWidth = semesterCarouselWidth || Math.max(240, width - spacing.xxl * 2 - spacing.lg * 2);
+  const semesterChipWidth = (semesterPageWidth - spacing.sm - spacing.xs * 2) / 2;
+  const selectedSemesterPage = getPageForValue(semesterPages, semesterNumber);
+
+  useEffect(() => {
+    setSemesterPage(selectedSemesterPage);
+    semesterScrollRef.current?.scrollTo({
+      x: selectedSemesterPage * semesterPageWidth,
+      animated: false
+    });
+  }, [selectedSemesterPage, semesterPageWidth]);
 
   useEffect(() => {
     if (!session?.access_token) {
@@ -49,7 +84,7 @@ export default function EducationScreen() {
         setError(matchError instanceof Error ? matchError.message : 'Unable to match university');
       });
     }
-  }, [session]);
+  }, [session?.access_token, session?.user.email]);
 
   useEffect(() => {
     if (!session?.access_token || isMatchedFromEmail) {
@@ -68,7 +103,7 @@ export default function EducationScreen() {
     }, 250);
 
     return () => clearTimeout(timeout);
-  }, [isMatchedFromEmail, query, session]);
+  }, [isMatchedFromEmail, query, session?.access_token]);
 
   async function handleSaveEducation() {
     if (!session?.access_token) {
@@ -100,88 +135,149 @@ export default function EducationScreen() {
   }
 
   return (
-    <Screen scroll>
-      <Text style={styles.title}>University and semester</Text>
-      <Text style={styles.body}>
-        {isMatchedFromEmail && selectedUniversity
-          ? `${selectedUniversity.name} matched from your email.`
-          : 'Select your US university and semester.'}
-      </Text>
+    <Screen>
+      <View style={styles.screenShell}>
+        <View style={styles.progressHeader}>
+          <Text style={styles.progressText}>Step 1 of 6</Text>
+          <View style={styles.progressTrack}>
+            <View style={styles.progressFill} />
+          </View>
+        </View>
 
-      <View style={styles.field}>
-        <Text style={styles.label}>University</Text>
-        <TextInput
-          editable={!isMatchedFromEmail}
-          onChangeText={(value) => {
-            setQuery(value);
-            setSelectedUniversity(null);
-          }}
-          placeholder="Search university"
-          style={[styles.input, isMatchedFromEmail ? styles.disabledInput : null]}
-          value={query}
-        />
-      </View>
+        <View>
+          <Text style={styles.title}>University and semester</Text>
+          <Text style={styles.body}>
+            {isMatchedFromEmail && selectedUniversity
+              ? `${selectedUniversity.name} matched from your email.`
+              : 'Select your US university and semester.'}
+          </Text>
+        </View>
 
-      {!isMatchedFromEmail ? (
-        <View style={styles.results}>
-          {!query.trim() ? <Text style={styles.resultHint}>Top university suggestions</Text> : null}
-          {universities.map((university) => {
-            const selected = selectedUniversity?.unitId === university.unitId;
+        <View
+          onLayout={(event) => setSemesterCarouselWidth(event.nativeEvent.layout.width - spacing.lg * 2)}
+          style={styles.formCard}
+        >
+          <View style={styles.field}>
+            <Text style={styles.label}>University</Text>
+            <TextInput
+              editable={!isMatchedFromEmail}
+              onChangeText={(value) => {
+                setQuery(value);
+                setSelectedUniversity(null);
+              }}
+              placeholder="Search university"
+              style={[styles.input, isMatchedFromEmail ? styles.disabledInput : null]}
+              value={query}
+            />
+          </View>
 
-            return (
-              <Pressable
-                key={university.unitId}
-                onPress={() => {
-                  setSelectedUniversity(university);
-                  setQuery(university.name);
-                }}
-                style={[styles.result, selected ? styles.selectedResult : null]}
-              >
-                <Text style={[styles.resultName, selected ? styles.selectedResultText : null]}>
-                  {university.name}
-                </Text>
-                <Text style={[styles.resultMeta, selected ? styles.selectedResultText : null]}>
-                  {university.city}, {university.state}
-                </Text>
-              </Pressable>
-            );
-          })}
-          {hasMoreUniversities ? (
-            <Text style={styles.resultHint}>Search to find more universities.</Text>
+          {!isMatchedFromEmail ? (
+            <View style={styles.results}>
+              {!query.trim() ? <Text style={styles.resultHint}>Top university suggestions</Text> : null}
+              {universities.map((university) => {
+                const selected = selectedUniversity?.unitId === university.unitId;
+
+                return (
+                  <Pressable
+                    key={university.unitId}
+                    onPress={() => {
+                      setSelectedUniversity(university);
+                      setQuery(university.name);
+                    }}
+                    style={[styles.result, selected ? styles.selectedResult : null]}
+                  >
+                    <Text style={[styles.resultName, selected ? styles.selectedResultText : null]}>
+                      {university.name}
+                    </Text>
+                    <Text style={[styles.resultMeta, selected ? styles.selectedResultText : null]}>
+                      {university.city}, {university.state}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+              {hasMoreUniversities ? (
+                <Text style={styles.resultHint}>Search to find more universities.</Text>
+              ) : null}
+            </View>
           ) : null}
+
+          <View style={styles.field}>
+            <Text style={styles.label}>Semester</Text>
+            {semesterCarouselWidth > 0 ? (
+              <>
+                <ScrollView
+                  horizontal
+                  onMomentumScrollEnd={(event) => setSemesterPage(getPageFromScroll(event))}
+                  pagingEnabled
+                  ref={semesterScrollRef}
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.semesterCarousel}
+                >
+                  {semesterPages.map((page, index) => (
+                    <View key={index} style={[styles.semesterPage, { width: semesterPageWidth }]}>
+                      {page.map((semester) => {
+                        const selected = semester.value === semesterNumber;
+                        return (
+                          <Pressable
+                            key={semester.value}
+                            onPress={() => setSemesterNumber(semester.value)}
+                            style={[styles.option, { width: semesterChipWidth }, selected ? styles.selectedOption : null]}
+                          >
+                            <Text style={[styles.optionText, selected ? styles.selectedOptionText : null]}>
+                              {semester.displayLabel}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  ))}
+                </ScrollView>
+                <View style={styles.pageDots}>
+                  {semesterPages.map((_, index) => (
+                    <View key={index} style={[styles.pageDot, index === semesterPage ? styles.pageDotActive : null]} />
+                  ))}
+                </View>
+              </>
+            ) : null}
+          </View>
         </View>
-      ) : null}
 
-      <View style={styles.field}>
-        <Text style={styles.label}>Semester</Text>
-        <View style={styles.optionGrid}>
-          {semesters.map((semester) => {
-            const selected = semester.value === semesterNumber;
-
-            return (
-              <Pressable
-                key={semester.value}
-                onPress={() => setSemesterNumber(semester.value)}
-                style={[styles.option, selected ? styles.selectedOption : null]}
-              >
-                <Text style={[styles.optionText, selected ? styles.selectedOptionText : null]}>
-                  {semester.label}
-                </Text>
-              </Pressable>
-            );
-          })}
+        <View>
+          <Pressable disabled={isSubmitting} onPress={handleSaveEducation} style={styles.button}>
+            <Text style={styles.buttonText}>{isSubmitting ? 'Saving...' : 'Continue'}</Text>
+          </Pressable>
+          {error ? <Text style={styles.error}>{error}</Text> : null}
         </View>
       </View>
-
-      <Pressable disabled={isSubmitting} onPress={handleSaveEducation} style={styles.button}>
-        <Text style={styles.buttonText}>{isSubmitting ? 'Saving...' : 'Continue'}</Text>
-      </Pressable>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  screenShell: {
+    flex: 1,
+    justifyContent: 'space-between',
+    gap: spacing.lg
+  },
+  progressHeader: {
+    gap: spacing.sm
+  },
+  progressText: {
+    color: colors.muted,
+    ...typography.meta
+  },
+  progressTrack: {
+    overflow: 'hidden',
+    height: 7,
+    borderRadius: 999,
+    backgroundColor: colors.surfaceMuted
+  },
+  progressFill: {
+    width: '16.67%',
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: colors.accent
+  },
   title: {
     color: colors.text,
     ...typography.screenTitle
@@ -192,8 +288,15 @@ const styles = StyleSheet.create({
     ...typography.body
   },
   field: {
-    marginTop: spacing.xl,
     gap: spacing.sm
+  },
+  formCard: {
+    gap: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+    backgroundColor: colors.surface,
+    padding: spacing.lg
   },
   label: {
     color: colors.text,
@@ -204,7 +307,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.fieldBorder,
     borderRadius: radii.sm,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.background,
     paddingHorizontal: spacing.md,
     color: colors.text,
     fontSize: 16
@@ -214,7 +317,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceMuted
   },
   results: {
-    marginTop: spacing.lg,
     gap: spacing.sm
   },
   result: {
@@ -223,7 +325,8 @@ const styles = StyleSheet.create({
     borderColor: colors.fieldBorder,
     borderRadius: radii.sm,
     backgroundColor: colors.surface,
-    padding: spacing.md
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm
   },
   selectedResult: {
     borderColor: colors.primary,
@@ -245,12 +348,17 @@ const styles = StyleSheet.create({
   selectedResultText: {
     color: '#ffffff'
   },
-  optionGrid: {
+  semesterCarousel: {
+    marginHorizontal: -spacing.xs
+  },
+  semesterPage: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.sm
+    gap: spacing.sm,
+    paddingHorizontal: spacing.xs
   },
   option: {
+    width: 134,
     minHeight: controls.chipHeight,
     justifyContent: 'center',
     borderWidth: 1,
@@ -265,15 +373,30 @@ const styles = StyleSheet.create({
   },
   optionText: {
     color: colors.text,
+    textAlign: 'center',
     ...typography.meta
   },
   selectedOptionText: {
     color: '#ffffff'
   },
+  pageDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6
+  },
+  pageDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 999,
+    backgroundColor: colors.border
+  },
+  pageDotActive: {
+    width: 16,
+    backgroundColor: colors.text
+  },
   button: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: spacing.xxl,
     minHeight: controls.buttonHeight,
     borderRadius: radii.sm,
     backgroundColor: colors.primary,
@@ -289,3 +412,21 @@ const styles = StyleSheet.create({
     ...typography.meta
   }
 });
+
+function getPageFromScroll(event: NativeSyntheticEvent<NativeScrollEvent>) {
+  const width = event.nativeEvent.layoutMeasurement.width || 1;
+  return Math.round(event.nativeEvent.contentOffset.x / width);
+}
+
+function getPageForValue<T extends { value: number | string }>(pages: T[][], value: number | string) {
+  const pageIndex = pages.findIndex((page) => page.some((item) => item.value === value));
+  return pageIndex >= 0 ? pageIndex : 0;
+}
+
+function getSemesterDisplayLabel(label: string) {
+  return label
+    .replace('Year 5+ / Extended undergrad', 'Year 5+')
+    .replace('Semester', 'Sem')
+    .replace(/\s+/g, ' ')
+    .trim();
+}

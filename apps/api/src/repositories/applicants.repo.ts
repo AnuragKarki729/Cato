@@ -25,7 +25,7 @@ export type ApplicantDocument = {
     fileSizeBytes?: number;
     uploadedAt?: Date;
   };
-  authProvider: 'google' | 'email';
+  authProvider: 'google' | 'email' | 'apple';
   onboardingStatus: OnboardingStatus;
   onboardingCompletedAt?: Date;
   resumeConsentAcceptedAt?: Date;
@@ -52,7 +52,7 @@ type SyncApplicantInput = {
   supabaseUserId: string;
   email: string;
   name?: string;
-  authProvider: 'google' | 'email';
+  authProvider: 'google' | 'email' | 'apple';
 };
 
 export function applicantsCollection(db: Db): Collection<ApplicantDocument> {
@@ -64,7 +64,8 @@ export async function ensureApplicantIndexes(db: Db) {
 
   await Promise.all([
     collection.createIndex({ supabaseUserId: 1 }, { unique: true }),
-    collection.createIndex({ email: 1 })
+    collection.createIndex({ email: 1 }),
+    collection.createIndex({ onboardingStatus: 1, updatedAt: -1 })
   ]);
 }
 

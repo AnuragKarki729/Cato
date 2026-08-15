@@ -2,9 +2,15 @@ import { Redirect, Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LoadingScreen, ReconnectScreen } from '../../src/components/LoadingScreen';
 import { useAppGate } from '../../src/hooks/useAppGate';
+import { InAppNotificationProvider } from '../../src/notifications/InAppNotificationProvider';
+import { getNotificationSeenKey, useNotificationCount } from '../../src/notifications/notificationSeenStore';
 
 export default function TabsLayout() {
   const gate = useAppGate();
+  const requestSeenKey = gate.session?.user.id
+    ? getNotificationSeenKey('applicant', gate.session.user.id, 'requests')
+    : undefined;
+  const unseenRequests = useNotificationCount(requestSeenKey);
 
   if (gate.isLoading) {
     return <LoadingScreen banner={gate.loadingBanner} />;
@@ -35,21 +41,31 @@ export default function TabsLayout() {
   }
 
   return (
-    <Tabs screenOptions={{ headerShown: false }}>
-      <Tabs.Screen
-        name="home"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color, size }) => <Ionicons color={color} name="home-outline" size={size} />
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          tabBarIcon: ({ color, size }) => <Ionicons color={color} name="person-circle-outline" size={size} />
-        }}
-      />
-    </Tabs>
+    <InAppNotificationProvider accessToken={gate.session.access_token} requestSeenKey={requestSeenKey} role="applicant">
+      <Tabs screenOptions={{ headerShown: false }}>
+        <Tabs.Screen
+          name="home"
+          options={{
+            title: 'Home',
+            tabBarIcon: ({ color, size }) => <Ionicons color={color} name="home-outline" size={size} />
+          }}
+        />
+        <Tabs.Screen
+          name="requests"
+          options={{
+            tabBarBadge: unseenRequests > 0 ? unseenRequests : undefined,
+            title: 'Requests',
+            tabBarIcon: ({ color, size }) => <Ionicons color={color} name="mail-unread-outline" size={size} />
+          }}
+        />
+        <Tabs.Screen
+          name="profile"
+          options={{
+            title: 'Profile',
+            tabBarIcon: ({ color, size }) => <Ionicons color={color} name="person-circle-outline" size={size} />
+          }}
+        />
+      </Tabs>
+    </InAppNotificationProvider>
   );
 }

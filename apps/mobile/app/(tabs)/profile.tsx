@@ -1,21 +1,47 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Alert, Image, Modal, PanResponder, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Alert,
+  Image,
+  Modal,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  PanResponder,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View
+} from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { roleDepartments, semesters } from '@cato/shared';
-import type { Internship, ProfileResponse, RecruiterCandidate, SaveInternshipRequest, SoftSkillItem } from '@cato/shared';
+import type {
+  ApplicantProject,
+  ApplicantProjectType,
+  Internship,
+  ProfileResponse,
+  RecruiterCandidate,
+  SaveApplicantProjectRequest,
+  SaveInternshipRequest,
+  SoftSkillItem
+} from '@cato/shared';
 import { acceptPrivacyConsent } from '../../src/api/privacy';
 import { deleteResume, uploadResume } from '../../src/api/resume';
 import {
   createInternship,
+  createProject,
   deleteAccount,
   deleteInternship,
+  deleteProject,
   getProfile,
   setProfileImageSource,
   updateApplicant,
   updateEducation,
-  updateInternship
+  updateInternship,
+  updateProject
 } from '../../src/api/profile';
 import { deleteVideo } from '../../src/api/signal';
 import { FullscreenResumeDialog } from '../../src/components/FullscreenResumeDialog';
@@ -38,11 +64,46 @@ type InternshipDraft = Omit<SaveInternshipRequest, 'durationMonths'> & {
   id?: string;
 };
 
+type ProjectDraft = SaveApplicantProjectRequest & {
+  id?: string;
+};
+
+const projectTypes: Array<{ label: string; value: ApplicantProjectType }> = [
+  { label: 'Built project', value: 'built_project' },
+  { label: 'Research', value: 'research' },
+  { label: 'Thesis', value: 'thesis' },
+  { label: 'Video', value: 'video' },
+  { label: 'Writing', value: 'writing' },
+  { label: 'Other', value: 'other' }
+];
+
+const semesterOptions = semesters.map((semester) => ({
+  ...semester,
+  displayLabel: getSemesterDisplayLabel(semester.label)
+}));
+
+const semesterPages = [
+  semesterOptions.slice(0, 8),
+  semesterOptions.slice(8)
+];
+
+const roleDepartmentPages = chunkItems(roleDepartments, 4);
+const roleDepartmentValuePages = roleDepartmentPages.map((page) => page.map((role) => ({ value: role })));
+
 function emptyInternship(): InternshipDraft {
   return {
     company: '',
     durationMonths: '3',
     roleDepartment: 'Engineering'
+  };
+}
+
+function emptyProject(): ProjectDraft {
+  return {
+    title: '',
+    type: 'built_project',
+    description: '',
+    linkUrl: ''
   };
 }
 
@@ -52,6 +113,16 @@ function toDraft(internship: Internship): InternshipDraft {
     company: internship.company,
     durationMonths: String(internship.durationMonths),
     roleDepartment: internship.roleDepartment
+  };
+}
+
+function toProjectDraft(project: ApplicantProject): ProjectDraft {
+  return {
+    id: project.id,
+    title: project.title,
+    type: project.type,
+    description: project.description,
+    linkUrl: project.linkUrl ?? ''
   };
 }
 
@@ -206,9 +277,11 @@ function getStarIcon(star: number, rating: number) {
 }
 
 export default function ProfileScreen() {
-  const { height } = useWindowDimensions();
+  const { height, width } = useWindowDimensions();
   const { session } = useSession();
   const keyboardScroll = useKeyboardAwareScroll();
+  const semesterScrollRef = useRef<ScrollView | null>(null);
+  const internshipRoleScrollRefs = useRef<Record<number, ScrollView | null>>({});
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
@@ -217,10 +290,14 @@ export default function ProfileScreen() {
   const [isUploadingProfileImage, setIsUploadingProfileImage] = useState(false);
   const [name, setName] = useState('');
   const [semesterNumber, setSemesterNumber] = useState<number>(semesters[7].value);
+  const [semesterPage, setSemesterPage] = useState(0);
+  const [internshipRolePages, setInternshipRolePages] = useState<Record<number, number>>({});
+  const [profileCarouselWidth, setProfileCarouselWidth] = useState(0);
   const [gpa, setGpa] = useState('');
   const [major, setMajor] = useState('');
   const [minor, setMinor] = useState('');
   const [internshipDrafts, setInternshipDrafts] = useState<InternshipDraft[]>([]);
+  const [projectDrafts, setProjectDrafts] = useState<ProjectDraft[]>([]);
   const [softSkillDrafts, setSoftSkillDrafts] = useState<SoftSkillItem[]>([]);
   const [recordingMode, setRecordingMode] = useState<'10-second' | '30-second' | null>(null);
   const [showRecruiterPreview, setShowRecruiterPreview] = useState(false);
@@ -231,6 +308,28 @@ export default function ProfileScreen() {
     () => semesters.find((semester) => semester.value === semesterNumber) ?? semesters[7],
     [semesterNumber]
   );
+  const semesterPageWidth = profileCarouselWidth || Math.max(240, width - spacing.xxl * 2 - spacing.lg * 2);
+  const semesterChipWidth = (semesterPageWidth - spacing.sm - spacing.xs * 2) / 2;
+  const selectedSemesterPage = getPageForValue(semesterPages, semesterNumber);
+
+  useEffect(() => {
+    setSemesterPage(selectedSemesterPage);
+    semesterScrollRef.current?.scrollTo({
+      x: selectedSemesterPage * semesterPageWidth,
+      animated: false
+    });
+  }, [selectedSemesterPage, semesterPageWidth]);
+
+  useEffect(() => {
+    internshipDrafts.forEach((internship, index) => {
+      const selectedRolePage = getPageForValue(roleDepartmentValuePages, internship.roleDepartment);
+      setInternshipRolePages((current) => ({ ...current, [index]: selectedRolePage }));
+      internshipRoleScrollRefs.current[index]?.scrollTo({
+        x: selectedRolePage * semesterPageWidth,
+        animated: false
+      });
+    });
+  }, [internshipDrafts, semesterPageWidth]);
   const tenSecondThumbnail = getVideoThumbnailUrl(profile?.signal?.tenSecondVideo?.secureUrl);
   const thirtySecondThumbnail = getVideoThumbnailUrl(profile?.signal?.thirtySecondVideo?.secureUrl);
   const profileImageUrl =
@@ -249,7 +348,6 @@ export default function ProfileScreen() {
       id: profile.applicant.id,
       applicantId: profile.applicant.id,
       name: profile.applicant.name,
-      email: profile.applicant.email,
       universityName: profile.education?.universityName,
       semesterLabel: profile.education?.semesterLabel,
       semesterNumber: profile.education?.semesterNumber,
@@ -271,6 +369,13 @@ export default function ProfileScreen() {
         company: internship.company,
         durationMonths: internship.durationMonths,
         roleDepartment: internship.roleDepartment
+      })),
+      projects: profile.projects.map((project) => ({
+        id: project.id,
+        title: project.title,
+        type: project.type,
+        description: project.description,
+        linkUrl: project.linkUrl
       })),
       bookmarked: false
     };
@@ -361,6 +466,7 @@ export default function ProfileScreen() {
       setMajor(result.education?.major ?? '');
       setMinor(result.education?.minor ?? '');
       setInternshipDrafts(result.internships.map(toDraft));
+      setProjectDrafts(result.projects.map(toProjectDraft));
       setSoftSkillDrafts(result.softSkills?.items ?? []);
     } catch (profileError) {
       setError(profileError instanceof Error ? profileError.message : 'Unable to load profile');
@@ -375,6 +481,14 @@ export default function ProfileScreen() {
     setInternshipDrafts((current) =>
       current.map((internship, currentIndex) =>
         currentIndex === index ? { ...internship, ...patch } : internship
+      )
+    );
+  }
+
+  function updateProjectDraft(index: number, patch: Partial<ProjectDraft>) {
+    setProjectDrafts((current) =>
+      current.map((project, currentIndex) =>
+        currentIndex === index ? { ...project, ...patch } : project
       )
     );
   }
@@ -569,6 +683,75 @@ export default function ProfileScreen() {
     }
   }
 
+  async function saveProject(index: number) {
+    if (!session?.access_token) {
+      return;
+    }
+
+    const project = projectDrafts[index];
+
+    if (!project.title.trim()) {
+      setError('Project title is required.');
+      return;
+    }
+
+    if (!project.description.trim()) {
+      setError('Project description is required.');
+      return;
+    }
+
+    setIsBusy(true);
+    setError(null);
+
+    try {
+      const body = {
+        title: project.title.trim(),
+        type: project.type,
+        description: project.description.trim(),
+        linkUrl: project.linkUrl?.trim() || undefined
+      };
+
+      if (project.id) {
+        await updateProject(session.access_token, project.id, body);
+      } else {
+        await createProject(session.access_token, body);
+      }
+
+      setStatus('Project saved');
+      await loadProfile();
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Unable to save project');
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  async function removeProject(index: number) {
+    if (!session?.access_token) {
+      return;
+    }
+
+    const project = projectDrafts[index];
+
+    if (!project.id) {
+      setProjectDrafts((current) => current.filter((_, currentIndex) => currentIndex !== index));
+      return;
+    }
+
+    setIsBusy(true);
+    setError(null);
+
+    try {
+      await deleteProject(session.access_token, project.id);
+      setStatus('Project deleted');
+      await loadProfile();
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : 'Unable to delete project');
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
   async function handleUploadResume() {
     if (!session?.access_token) {
       return;
@@ -583,11 +766,7 @@ export default function ProfileScreen() {
         privacyPolicy: true
       });
       const picked = await DocumentPicker.getDocumentAsync({
-        type: [
-          'application/pdf',
-          'application/msword',
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-        ],
+        type: 'application/pdf',
         multiple: false,
         copyToCacheDirectory: true
       });
@@ -597,12 +776,19 @@ export default function ProfileScreen() {
       }
 
       const asset = picked.assets[0];
-      const dataUri = await readUriAsDataUri(asset.uri, asset.mimeType ?? 'application/octet-stream');
+      const fileType = getResumeFileType(asset.name, asset.mimeType);
+
+      if (!fileType) {
+        setError('Please upload a PDF resume.');
+        return;
+      }
+
+      const dataUri = await readUriAsDataUri(asset.uri, 'application/pdf');
 
       await uploadResume(session.access_token, {
         dataUri,
         originalFileName: asset.name,
-        fileType: getResumeFileType(asset.name, asset.mimeType),
+        fileType,
         fileSizeBytes: asset.size ?? 1
       });
       setStatus('Resume uploaded');
@@ -734,7 +920,12 @@ export default function ProfileScreen() {
   }
 
   return (
-    <Screen scroll scrollBottomPadding={spacing.xxxl} scrollRef={keyboardScroll.scrollRef}>
+    <Screen
+      onScroll={keyboardScroll.handleScroll}
+      scroll
+      scrollBottomPadding={spacing.xl}
+      scrollRef={keyboardScroll.scrollRef}
+    >
       <LoadingOverlay message="Uploading profile picture..." visible={isUploadingProfileImage} />
       <LoadingOverlay message={accountTransitionMessage ?? 'Working...'} visible={Boolean(accountTransitionMessage)} />
       <FullscreenResumeDialog
@@ -824,30 +1015,56 @@ export default function ProfileScreen() {
               >
                 <Text style={styles.previewCloseText}>Close preview</Text>
               </Pressable>
-              <RecruiterCandidateSheet candidate={previewSheetCandidate} onClose={() => setPreviewSheetCandidate(null)} />
+              <RecruiterCandidateSheet
+                candidate={previewSheetCandidate}
+                isApplicantPreview
+                onClose={() => setPreviewSheetCandidate(null)}
+              />
             </View>
           </Modal>
 
-          <View style={[styles.section, styles.sectionEducation]}>
+          <View
+            onLayout={(event) => setProfileCarouselWidth(event.nativeEvent.layout.width - spacing.lg * 2)}
+            style={[styles.section, styles.sectionEducation]}
+          >
             <Text style={styles.universityText}>{profile.education?.universityName ?? 'Not set'}</Text>
             <Text style={styles.label}>Semester</Text>
-            <View style={styles.optionGrid}>
-              {semesters.map((semester) => {
-                const selected = semester.value === semesterNumber;
-
-                return (
-                  <Pressable
-                    key={semester.value}
-                    onPress={() => handleSemesterChange(semester.value)}
-                    style={[styles.option, selected ? styles.selectedOption : null]}
-                  >
-                    <Text style={[styles.optionText, selected ? styles.selectedOptionText : null]}>
-                      {semester.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+            {profileCarouselWidth > 0 ? (
+              <>
+                <ScrollView
+                  horizontal
+                  onMomentumScrollEnd={(event) => setSemesterPage(getPageFromScroll(event))}
+                  pagingEnabled
+                  ref={semesterScrollRef}
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.semesterCarousel}
+                >
+                  {semesterPages.map((page, index) => (
+                    <View key={index} style={[styles.semesterPage, { width: semesterPageWidth }]}>
+                      {page.map((semester) => {
+                        const selected = semester.value === semesterNumber;
+                        return (
+                          <Pressable
+                            key={semester.value}
+                            onPress={() => handleSemesterChange(semester.value)}
+                            style={[styles.option, { width: semesterChipWidth }, selected ? styles.selectedOption : null]}
+                          >
+                            <Text style={[styles.optionText, selected ? styles.selectedOptionText : null]}>
+                              {semester.displayLabel}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  ))}
+                </ScrollView>
+                <View style={styles.pageDots}>
+                  {semesterPages.map((_, index) => (
+                    <View key={index} style={[styles.pageDot, index === semesterPage ? styles.pageDotActive : null]} />
+                  ))}
+                </View>
+              </>
+            ) : null}
             <View onLayout={keyboardScroll.registerField('profile-gpa')}>
               <TextInput
                 inputMode="decimal"
@@ -923,23 +1140,56 @@ export default function ProfileScreen() {
                     value={internship.durationMonths}
                   />
                 </View>
-                <View style={styles.optionGrid}>
-                  {roleDepartments.map((roleDepartment) => {
-                    const selected = roleDepartment === internship.roleDepartment;
+                {profileCarouselWidth > 0 ? (
+                  <>
+                    <ScrollView
+                      horizontal
+                      onMomentumScrollEnd={(event) =>
+                        setInternshipRolePages((current) => ({ ...current, [index]: getPageFromScroll(event) }))
+                      }
+                      pagingEnabled
+                      ref={(scrollView) => {
+                        internshipRoleScrollRefs.current[index] = scrollView;
+                      }}
+                      showsHorizontalScrollIndicator={false}
+                      style={styles.semesterCarousel}
+                    >
+                      {roleDepartmentPages.map((page, pageIndex) => (
+                        <View key={pageIndex} style={[styles.semesterPage, { width: semesterPageWidth }]}>
+                          {page.map((roleDepartment) => {
+                            const selected = roleDepartment === internship.roleDepartment;
+                            const chipWidth = (semesterPageWidth - spacing.sm - spacing.xs * 2) / 2;
 
-                    return (
-                      <Pressable
-                        key={roleDepartment}
-                        onPress={() => updateInternshipDraft(index, { roleDepartment })}
-                        style={[styles.option, selected ? styles.selectedOption : null]}
-                      >
-                        <Text style={[styles.optionText, selected ? styles.selectedOptionText : null]}>
-                          {roleDepartment}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
+                            return (
+                              <Pressable
+                                key={roleDepartment}
+                                onPress={() => updateInternshipDraft(index, { roleDepartment })}
+                                style={[styles.option, { width: chipWidth }, selected ? styles.selectedOption : null]}
+                              >
+                                <Text style={[styles.optionText, selected ? styles.selectedOptionText : null]}>
+                                  {roleDepartment}
+                                </Text>
+                              </Pressable>
+                            );
+                          })}
+                        </View>
+                      ))}
+                    </ScrollView>
+                    {roleDepartmentPages.length > 1 ? (
+                      <View style={styles.pageDots}>
+                        {roleDepartmentPages.map((_, pageIndex) => (
+                          <View
+                            key={pageIndex}
+                            style={[
+                              styles.pageDot,
+                              pageIndex === (internshipRolePages[index] ?? 0) ? styles.pageDotActive : null
+                            ]}
+                          />
+                        ))}
+                      </View>
+                    ) : null}
+                  </>
+                ) : null}
                 <View style={styles.row}>
                   <Pressable
                     disabled={
@@ -962,6 +1212,86 @@ export default function ProfileScreen() {
                     <Text style={styles.secondaryButtonText}>Save</Text>
                   </Pressable>
                   <Pressable disabled={isBusy} onPress={() => removeInternship(index)}>
+                    <Text style={styles.dangerText}>Delete</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ))}
+          </View>
+
+          <View style={[styles.section, styles.sectionProjects]}>
+            <View style={styles.row}>
+              <Text style={styles.sectionTitle}>What I built</Text>
+              <Pressable onPress={() => setProjectDrafts((current) => [...current, emptyProject()])}>
+                <Text style={styles.linkText}>Add</Text>
+              </Pressable>
+            </View>
+            {projectDrafts.length === 0 ? <Text style={styles.body}>No projects added yet.</Text> : null}
+            {projectDrafts.map((project, index) => (
+              <View key={project.id ?? `new-project-${index}`} style={styles.item}>
+                <View onLayout={keyboardScroll.registerField(`profile-project-title-${index}`)}>
+                  <TextInput
+                    onChangeText={(title) => updateProjectDraft(index, { title })}
+                    onFocus={() => keyboardScroll.focusField(`profile-project-title-${index}`, 300, { settle: false })}
+                    placeholder="Project, thesis, video, or writing title"
+                    placeholderTextColor={colors.muted}
+                    style={[styles.input, !project.title.trim() ? styles.invalidInput : null]}
+                    value={project.title}
+                  />
+                </View>
+                <View style={styles.optionGrid}>
+                  {projectTypes.map((projectType) => {
+                    const selected = projectType.value === project.type;
+
+                    return (
+                      <Pressable
+                        key={projectType.value}
+                        onPress={() => updateProjectDraft(index, { type: projectType.value })}
+                        style={[styles.option, selected ? styles.selectedOption : null]}
+                      >
+                        <Text style={[styles.optionText, selected ? styles.selectedOptionText : null]}>
+                          {projectType.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <View onLayout={keyboardScroll.registerField(`profile-project-description-${index}`)}>
+                  <TextInput
+                    multiline
+                    onChangeText={(description) => updateProjectDraft(index, { description })}
+                    onFocus={() => keyboardScroll.focusField(`profile-project-description-${index}`, 300, { settle: false })}
+                    placeholder="What did you make, study, publish, or present?"
+                    placeholderTextColor={colors.muted}
+                    style={[styles.input, styles.multiline, !project.description.trim() ? styles.invalidInput : null]}
+                    textAlignVertical="top"
+                    value={project.description}
+                  />
+                </View>
+                <View onLayout={keyboardScroll.registerField(`profile-project-link-${index}`)}>
+                  <TextInput
+                    autoCapitalize="none"
+                    keyboardType="url"
+                    onChangeText={(linkUrl) => updateProjectDraft(index, { linkUrl })}
+                    onFocus={() => keyboardScroll.focusField(`profile-project-link-${index}`, 300, { settle: false })}
+                    placeholder="Optional link"
+                    placeholderTextColor={colors.muted}
+                    style={styles.input}
+                    value={project.linkUrl}
+                  />
+                </View>
+                <View style={styles.row}>
+                  <Pressable
+                    disabled={isBusy || !project.title.trim() || !project.description.trim()}
+                    onPress={() => saveProject(index)}
+                    style={[
+                      styles.secondaryButton,
+                      isBusy || !project.title.trim() || !project.description.trim() ? styles.disabledButton : null
+                    ]}
+                  >
+                    <Text style={styles.secondaryButtonText}>Save</Text>
+                  </Pressable>
+                  <Pressable disabled={isBusy} onPress={() => removeProject(index)}>
                     <Text style={styles.dangerText}>Delete</Text>
                   </Pressable>
                 </View>
@@ -1105,7 +1435,14 @@ export default function ProfileScreen() {
           </View>
         </>
       ) : (
-        <Text style={styles.body}>Loading profile</Text>
+        <View style={styles.emptyState}>
+          <Text style={styles.body}>{error ? 'Profile could not load.' : 'Loading profile'}</Text>
+          {error ? (
+            <Pressable disabled={isBusy} onPress={loadProfile} style={styles.secondaryButton}>
+              <Text style={styles.secondaryButtonText}>Retry</Text>
+            </Pressable>
+          ) : null}
+        </View>
       )}
       {status ? <Text style={styles.meta}>{status}</Text> : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -1134,6 +1471,9 @@ const styles = StyleSheet.create({
   },
   sectionInternships: {
     backgroundColor: '#f7f5ff'
+  },
+  sectionProjects: {
+    backgroundColor: '#f5f8ff'
   },
   sectionResume: {
     backgroundColor: '#f4faf9'
@@ -1235,6 +1575,15 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing.sm
   },
+  semesterCarousel: {
+    marginHorizontal: -spacing.xs
+  },
+  semesterPage: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.xs
+  },
   option: {
     minHeight: controls.chipHeight,
     justifyContent: 'center',
@@ -1250,10 +1599,26 @@ const styles = StyleSheet.create({
   },
   optionText: {
     color: colors.text,
+    textAlign: 'center',
     ...typography.meta
   },
   selectedOptionText: {
     color: colors.primaryText
+  },
+  pageDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6
+  },
+  pageDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 999,
+    backgroundColor: colors.border
+  },
+  pageDotActive: {
+    width: 16,
+    backgroundColor: colors.text
   },
   item: {
     gap: spacing.md,
@@ -1339,6 +1704,10 @@ const styles = StyleSheet.create({
     color: colors.text,
     ...typography.button
   },
+  emptyState: {
+    gap: spacing.lg,
+    marginTop: spacing.xxxl
+  },
   chipButton: {
     justifyContent: 'center',
     minHeight: controls.chipHeight,
@@ -1400,3 +1769,29 @@ const styles = StyleSheet.create({
     ...typography.meta
   }
 });
+
+function getPageFromScroll(event: NativeSyntheticEvent<NativeScrollEvent>) {
+  const width = event.nativeEvent.layoutMeasurement.width || 1;
+  return Math.round(event.nativeEvent.contentOffset.x / width);
+}
+
+function getPageForValue<T extends { value: number | string }>(pages: T[][], value: number | string) {
+  const pageIndex = pages.findIndex((page) => page.some((item) => item.value === value));
+  return pageIndex >= 0 ? pageIndex : 0;
+}
+
+function getSemesterDisplayLabel(label: string) {
+  return label
+    .replace('Year 5+ / Extended undergrad', 'Year 5+')
+    .replace('Semester', 'Sem')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function chunkItems<T>(items: readonly T[], size: number) {
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks;
+}

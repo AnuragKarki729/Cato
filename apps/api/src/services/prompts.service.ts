@@ -1,19 +1,30 @@
-const defaultSignalPrompts = [
-  "What's your hot take?",
-  "What's a hill you'd die on?",
-  "What's something people misunderstand about you?",
-  "What's a problem you love solving?",
-  "What's a rule you think should be broken?",
-  "What's a moment that changed how you work?"
-] as const;
+import type { AcademicFieldId } from '../data/academicFields.js';
+import { academicFields, signalPromptCategories } from '../data/academicFields.js';
 
-export function listSignalPrompts() {
-  return defaultSignalPrompts.map((text, index) => ({
-    id: String(index + 1),
-    text,
-    active: true,
-    sortOrder: index + 1
-  }));
+export function listSignalPromptCategories() {
+  const activeFieldIds = new Set(signalPromptCategories.map((category) => category.fieldId));
+
+  return academicFields
+    .filter((field) => activeFieldIds.has(field.id))
+    .map((field) => ({
+      fieldId: field.id,
+      label: field.label
+    }));
+}
+
+export function listSignalPrompts(fieldId?: AcademicFieldId) {
+  return signalPromptCategories
+    .filter((category) => !fieldId || category.fieldId === fieldId)
+    .flatMap((category) =>
+      category.prompts.map((text, index) => ({
+        id: `${category.fieldId}:${index + 1}`,
+        fieldId: category.fieldId,
+        fieldLabel: category.label,
+        text,
+        active: true,
+        sortOrder: index + 1
+      }))
+    );
 }
 
 export function findSignalPromptById(promptId: string) {

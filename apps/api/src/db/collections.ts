@@ -4,11 +4,17 @@ export const collections = {
   resumes: 'resumes',
   signalPrompts: 'signal_prompts',
   applicantSignals: 'applicant_signals',
+  applicantActivities: 'applicant_activities',
+  applicantProjects: 'applicant_projects',
   softSkillOutputs: 'soft_skill_outputs',
   internships: 'internships',
   universities: 'universities',
   recruiterAccounts: 'recruiter_accounts',
   recruiterBookmarks: 'recruiter_bookmarks',
+  recruiterCandidateReviews: 'recruiter_candidate_reviews',
+  recruiterInterestRequests: 'recruiter_interest_requests',
   recruiterMessages: 'recruiter_messages',
+  recruiterSavedFilters: 'recruiter_saved_filters',
+  appNotifications: 'app_notifications',
   appUserRoles: 'app_user_roles'
 } as const;

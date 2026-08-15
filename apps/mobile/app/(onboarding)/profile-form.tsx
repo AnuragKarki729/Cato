@@ -8,6 +8,7 @@ import { Screen } from '../../src/components/Screen';
 import { formatGpaInput, normalizeGpaInput, parseGpaForSave } from '../../src/forms/gpa';
 import { useKeyboardAwareScroll } from '../../src/forms/useKeyboardAwareScroll';
 import { useSession } from '../../src/hooks/useSession';
+import { useQueuedVideoUploads, waitForQueuedVideoUpload } from '../../src/media/videoUploadQueue';
 import { colors, controls, radii, spacing, typography } from '../../src/theme';
 
 type InternshipForm = Omit<SaveInternshipRequest, 'durationMonths'> & {
@@ -154,11 +155,13 @@ function getSessionNameFallback(session: ReturnType<typeof useSession>['session'
 
 export default function ProfileFormScreen() {
   const { session } = useSession();
+  const queuedUploads = useQueuedVideoUploads();
   const keyboardScroll = useKeyboardAwareScroll();
   const companyInputRefs = useRef<Record<number, TextInput | null>>({});
   const [error, setError] = useState<string | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [universityName, setUniversityName] = useState('');
   const [universityUnitId, setUniversityUnitId] = useState<string | undefined>();
@@ -266,6 +269,39 @@ export default function ProfileFormScreen() {
     setInternships((current) => current.filter((internship) => internship.localId !== localId));
   }
 
+  function buildProfilePayload(parsedGpa: number) {
+    return {
+      name: name.trim(),
+      universityName,
+      universityUnitId,
+      universityMatchedFromEmail,
+      semesterLabel: selectedSemester.label,
+      semesterNumber: selectedSemester.value,
+      gpa: parsedGpa,
+      major: major.trim(),
+      minor: minor.trim() || undefined,
+      internships: internships.map(({ localId, durationMonths, ...internship }) => ({
+        ...internship,
+        company: internship.company.trim(),
+        durationMonths: Number(durationMonths)
+      }))
+    };
+  }
+
+  async function completeProfileAfterPendingUploads(parsedGpa: number) {
+    if (!session?.access_token) {
+      return;
+    }
+
+    if (queuedUploads.thirtySecond) {
+      setSaveStatus('Your deeper signal is being saved...');
+      await waitForQueuedVideoUpload('30-second');
+      setSaveStatus('Finalizing your profile...');
+    }
+
+    await completeOnboardingProfile(session.access_token, buildProfilePayload(parsedGpa));
+  }
+
   async function handleSubmitProfile() {
     if (!session?.access_token) {
       return;
@@ -299,157 +335,145 @@ export default function ProfileFormScreen() {
     }
 
     setError(null);
+    setSaveStatus(queuedUploads.thirtySecond ? 'Your deeper signal is being saved...' : 'Saving your profile...');
     setIsSubmitting(true);
 
     try {
-      await completeOnboardingProfile(session.access_token, {
-        name: name.trim(),
-        universityName,
-        universityUnitId,
-        universityMatchedFromEmail,
-        semesterLabel: selectedSemester.label,
-        semesterNumber: selectedSemester.value,
-        gpa: parsedGpa,
-        major: major.trim(),
-        minor: minor.trim() || undefined,
-        internships: internships.map(({ localId, durationMonths, ...internship }) => ({
-          ...internship,
-          company: internship.company.trim(),
-          durationMonths: Number(durationMonths)
-        }))
-      });
+      await completeProfileAfterPendingUploads(parsedGpa);
       router.replace('/(tabs)/home');
     } catch (profileError) {
       setError(profileError instanceof Error ? profileError.message : 'Unable to complete profile');
     } finally {
       setIsSubmitting(false);
+      setSaveStatus(null);
     }
   }
 
   return (
-    <Screen scroll scrollRef={keyboardScroll.scrollRef}>
-      <View style={styles.logo}>
-        <Text style={styles.logoText}>C</Text>
-      </View>
-      <Text style={styles.title}>Save your profile, keep building you.</Text>
-      <Text style={styles.body}>
-        {displayName === 'there' ? 'Create your profile' : `Create your profile, ${displayName}`}, track your growth,
-        and save new insights.
-      </Text>
-
-      <View onLayout={keyboardScroll.registerField('name')} style={styles.field}>
-        <Text style={styles.label}>Name</Text>
-        <TextInput
-          autoCapitalize="words"
-          onFocus={() => keyboardScroll.focusField('name')}
-          onChangeText={setName}
-          placeholder="Your name"
-          style={[styles.input, !name.trim() ? styles.invalidInput : null]}
-          value={name}
-        />
-      </View>
-
-      <View onLayout={keyboardScroll.registerField('gpa')} style={styles.field}>
-        <Text style={styles.label}>University</Text>
-        <View style={styles.universityBadge}>
-          <Text style={styles.universityText}>{isLoadingProfile ? 'Loading university' : universityName}</Text>
+    <Screen onScroll={keyboardScroll.handleScroll} scroll scrollRef={keyboardScroll.scrollRef}>
+      {saveStatus ? (
+        <View style={styles.statusPill}>
+          <Text style={styles.statusDot}>•</Text>
+          <Text style={styles.statusText}>{saveStatus}</Text>
         </View>
-      </View>
-
-      <View style={styles.field}>
-        <Text style={styles.label}>Semester</Text>
-        <View style={styles.optionGrid}>
-          {semesters.map((semester) => {
-            const selected = semester.value === semesterNumber;
-
-            return (
-              <Pressable
-                key={semester.value}
-                onPress={() => setSemesterNumber(semester.value)}
-                style={[styles.option, selected ? styles.selectedOption : null]}
-              >
-                <Text style={[styles.optionText, selected ? styles.selectedOptionText : null]}>{semester.label}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      </View>
-
-      <View style={styles.field}>
-        <Text style={styles.label}>GPA</Text>
-        <TextInput
-          inputMode="decimal"
-          keyboardType="decimal-pad"
-          onBlur={() => setGpa((current) => formatGpaInput(current))}
-          onChangeText={(value) => setGpa(normalizeGpaInput(value))}
-          onFocus={() => keyboardScroll.focusField('gpa')}
-          placeholder="0.00 - 4.00"
-          style={styles.input}
-          value={gpa}
-        />
-      </View>
-
-      <View onLayout={keyboardScroll.registerField('major')} style={styles.field}>
-        <Text style={styles.label}>Major</Text>
-        <TextInput
-          autoCapitalize="words"
-          onBlur={() => setIsMajorFocused(false)}
-          onChangeText={setMajor}
-          onFocus={() => {
-            setIsMajorFocused(true);
-            keyboardScroll.focusField('major');
-          }}
-          placeholder="Search major"
-          style={[styles.input, !major.trim() ? styles.invalidInput : null]}
-          value={major}
-        />
-        {majorSuggestions.length > 0 ? (
-          <View style={styles.suggestionList}>
-            {majorSuggestions.map((majorSuggestion) => (
-              <Pressable
-                key={majorSuggestion}
-                onPressIn={() => {
-                  setMajor(majorSuggestion);
-                  setIsMajorFocused(false);
-                }}
-                style={styles.suggestionItem}
-              >
-                <Text style={styles.suggestionText}>{majorSuggestion}</Text>
-              </Pressable>
-            ))}
-          </View>
-        ) : null}
-      </View>
-
-      <View onLayout={keyboardScroll.registerField('minor')} style={styles.field}>
-        <Text style={styles.label}>Minor</Text>
-        <TextInput
-          onChangeText={setMinor}
-          onFocus={() => keyboardScroll.focusField('minor')}
-          placeholder="Optional"
-          style={styles.input}
-          value={minor}
-        />
-      </View>
-
-      <View style={styles.sectionHeader}>
-        <Text style={styles.label}>Internships</Text>
-      </View>
-
-      {internships.length === 0 ? (
-        <Pressable onPress={addInternship} style={styles.inlineAddButton}>
-          <Text style={styles.inlineAddButtonText}>Add +</Text>
-        </Pressable>
       ) : null}
+      <View style={styles.hero}>
+        <View style={styles.logo}>
+          <Text style={styles.logoText}>C</Text>
+        </View>
+        <Text style={styles.title}>Save your profile</Text>
+        <Text style={styles.body}>
+          {displayName === 'there' ? 'Create your profile' : `Create your profile, ${displayName}`}.
+        </Text>
+      </View>
 
-      {internships.map((internship, index) => (
-        <View key={internship.localId} style={styles.internship}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.internshipTitle}>Internship {index + 1}</Text>
-            <Pressable onPress={() => removeInternship(internship.localId)}>
-              <Text style={styles.removeText}>Remove</Text>
-            </Pressable>
+      <View style={styles.formBlock}>
+        <View onLayout={keyboardScroll.registerField('name')} style={styles.field}>
+          <Text style={styles.label}>Name</Text>
+          <TextInput
+            autoCapitalize="words"
+            onFocus={() => keyboardScroll.focusField('name')}
+            onChangeText={setName}
+            placeholder="Your name"
+            style={[styles.input, !name.trim() ? styles.invalidInput : null]}
+            value={name}
+          />
+        </View>
+
+        <View onLayout={keyboardScroll.registerField('gpa')} style={styles.field}>
+          <Text style={styles.label}>University</Text>
+          <View style={styles.universityBadge}>
+            <Text style={styles.universityText}>{isLoadingProfile ? 'Loading university' : universityName}</Text>
           </View>
+        </View>
+
+        <View style={styles.field}>
+          <Text style={styles.label}>Semester</Text>
+          <View style={styles.readOnlyBadge}>
+            <Text style={styles.readOnlyText}>{selectedSemester.label}</Text>
+          </View>
+        </View>
+
+        <View style={styles.field}>
+          <Text style={styles.label}>GPA</Text>
+          <TextInput
+            inputMode="decimal"
+            keyboardType="decimal-pad"
+            onBlur={() => setGpa((current) => formatGpaInput(current))}
+            onChangeText={(value) => setGpa(normalizeGpaInput(value))}
+            onFocus={() => keyboardScroll.focusField('gpa')}
+            placeholder="0.00 - 4.00"
+            style={styles.input}
+            value={gpa}
+          />
+        </View>
+
+        <View onLayout={keyboardScroll.registerField('major')} style={styles.field}>
+          <Text style={styles.label}>Major</Text>
+          <TextInput
+            autoCapitalize="words"
+            onBlur={() => setIsMajorFocused(false)}
+            onChangeText={setMajor}
+            onFocus={() => {
+              setIsMajorFocused(true);
+              keyboardScroll.focusField('major');
+            }}
+            placeholder="Search major"
+            style={[styles.input, !major.trim() ? styles.invalidInput : null]}
+            value={major}
+          />
+          {majorSuggestions.length > 0 ? (
+            <View style={styles.suggestionList}>
+              {majorSuggestions.map((majorSuggestion) => (
+                <Pressable
+                  key={majorSuggestion}
+                  onPressIn={() => {
+                    setMajor(majorSuggestion);
+                    setIsMajorFocused(false);
+                  }}
+                  style={styles.suggestionItem}
+                >
+                  <Text style={styles.suggestionText}>{majorSuggestion}</Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+        </View>
+
+        <View onLayout={keyboardScroll.registerField('minor')} style={styles.field}>
+          <Text style={styles.label}>Minor</Text>
+          <TextInput
+            onChangeText={setMinor}
+            onFocus={() => keyboardScroll.focusField('minor')}
+            placeholder="Optional"
+            style={styles.input}
+            value={minor}
+          />
+        </View>
+      </View>
+
+      <View style={styles.optionalBlock}>
+        <View style={styles.sectionHeader}>
+          <View>
+            <Text style={styles.sectionTitle}>Internships</Text>
+            <Text style={styles.sectionMeta}>Optional, but helpful for recruiters.</Text>
+          </View>
+        </View>
+
+        {internships.length === 0 ? (
+          <Pressable onPress={addInternship} style={styles.inlineAddButton}>
+            <Text style={styles.inlineAddButtonText}>Add Internship +</Text>
+          </Pressable>
+        ) : null}
+
+        {internships.map((internship, index) => (
+          <View key={internship.localId} style={styles.internship}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.internshipTitle}>Internship {index + 1}</Text>
+              <Pressable onPress={() => removeInternship(internship.localId)}>
+                <Text style={styles.removeText}>Remove</Text>
+              </Pressable>
+            </View>
           <View onLayout={keyboardScroll.registerField(`internship-company-${internship.localId}`)} style={styles.field}>
             <Text style={styles.label}>Company</Text>
             <TextInput
@@ -501,8 +525,9 @@ export default function ProfileFormScreen() {
               <Text style={styles.inlineAddButtonText}>Add +</Text>
             </Pressable>
           ) : null}
-        </View>
-      ))}
+          </View>
+        ))}
+      </View>
 
       <Pressable
         disabled={isSubmitting || !isProfileValid}
@@ -517,6 +542,37 @@ export default function ProfileFormScreen() {
 }
 
 const styles = StyleSheet.create({
+  statusPill: {
+    position: 'absolute',
+    top: spacing.md,
+    right: spacing.md,
+    zIndex: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    maxWidth: 230,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm
+  },
+  statusDot: {
+    color: colors.accent,
+    fontSize: 18,
+    fontWeight: '900',
+    lineHeight: 18
+  },
+  statusText: {
+    flex: 1,
+    color: colors.text,
+    ...typography.meta
+  },
+  hero: {
+    alignItems: 'flex-start',
+    marginBottom: spacing.xl
+  },
   logo: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -531,7 +587,7 @@ const styles = StyleSheet.create({
     fontWeight: '900'
   },
   title: {
-    marginTop: spacing.xxl,
+    marginTop: spacing.xl,
     color: colors.text,
     ...typography.screenTitle
   },
@@ -540,9 +596,16 @@ const styles = StyleSheet.create({
     ...typography.body,
     marginTop: spacing.sm
   },
+  formBlock: {
+    gap: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+    backgroundColor: colors.surface,
+    padding: spacing.lg
+  },
   field: {
-    gap: spacing.sm,
-    marginTop: spacing.lg
+    gap: spacing.sm
   },
   label: {
     color: colors.text,
@@ -553,7 +616,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.fieldBorder,
     borderRadius: radii.sm,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.background,
     paddingHorizontal: spacing.md,
     color: colors.text,
     ...typography.body
@@ -585,12 +648,25 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.fieldBorder,
     borderRadius: radii.sm,
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: colors.background,
     paddingHorizontal: spacing.md
   },
   universityText: {
     color: colors.text,
     ...typography.sectionTitle
+  },
+  readOnlyBadge: {
+    minHeight: controls.inputHeight,
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+    backgroundColor: colors.surfaceMuted,
+    paddingHorizontal: spacing.md
+  },
+  readOnlyText: {
+    color: colors.text,
+    ...typography.label
   },
   optionGrid: {
     flexDirection: 'row',
@@ -603,7 +679,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radii.sm,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.background,
     paddingHorizontal: spacing.md
   },
   selectedOption: {
@@ -622,14 +698,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: spacing.md,
-    marginTop: spacing.lg
+  },
+  sectionTitle: {
+    color: colors.text,
+    ...typography.sectionTitle
+  },
+  sectionMeta: {
+    marginTop: spacing.xs,
+    color: colors.muted,
+    ...typography.meta
+  },
+  optionalBlock: {
+    gap: spacing.lg,
+    marginTop: spacing.xl,
+    borderRadius: radii.sm,
+    backgroundColor: colors.surfaceMuted,
+    padding: spacing.lg
   },
   internship: {
     gap: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    marginTop: spacing.lg,
-    paddingTop: spacing.lg
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+    backgroundColor: colors.surface,
+    padding: spacing.md
   },
   internshipTitle: {
     color: colors.text,
@@ -650,7 +742,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: controls.secondaryButtonHeight,
-    marginTop: spacing.lg,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radii.sm,
@@ -667,7 +758,7 @@ const styles = StyleSheet.create({
   button: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: spacing.sm,
+    marginTop: spacing.xl,
     minHeight: controls.buttonHeight,
     borderRadius: radii.sm,
     backgroundColor: colors.primary,

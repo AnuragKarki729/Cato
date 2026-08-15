@@ -3,7 +3,9 @@ import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import type { RecruiterCandidate } from '@cato/shared';
 import { getRecruiterBookmarks } from '../../src/api/recruiter';
+import { LoadingScreen } from '../../src/components/LoadingScreen';
 import { RecruiterContent } from '../../src/recruiter/RecruiterContent';
+import { RecruiterEmptyState } from '../../src/recruiter/RecruiterEmptyState';
 import { useSession } from '../../src/hooks/useSession';
 import { colors, radii } from '../../src/theme';
 
@@ -11,6 +13,7 @@ export default function RecruiterBookmarksScreen() {
   const { session } = useSession();
   const [bookmarks, setBookmarks] = useState<RecruiterCandidate[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!session?.access_token) {
@@ -21,8 +24,28 @@ export default function RecruiterBookmarksScreen() {
       .then((response) => setBookmarks(response.bookmarks))
       .catch((bookmarkError) => {
         setError(bookmarkError instanceof Error ? bookmarkError.message : 'Unable to load bookmarks');
+      })
+      .finally(() => {
+        setIsLoading(false);
       });
   }, [session]);
+
+  if (isLoading) {
+    return <LoadingScreen banner="Loading bookmarks" />;
+  }
+
+  if (error || bookmarks.length === 0) {
+    return (
+      <RecruiterContent>
+        <RecruiterEmptyState
+          actionLabel={error ? 'Back to dashboard' : 'Browse video feed'}
+          body={error ?? 'Saved candidates will appear here after you bookmark them.'}
+          onAction={() => router.replace(error ? '/(recruiter)/dashboard' : '/(recruiter)/feed')}
+          title={error ? 'Unable to load bookmarks' : 'No bookmarks yet'}
+        />
+      </RecruiterContent>
+    );
+  }
 
   return (
     <RecruiterContent>
@@ -45,12 +68,13 @@ export default function RecruiterBookmarksScreen() {
               <Text style={styles.name}>{candidate.name ?? 'Applicant'}</Text>
               <Text style={styles.body}>{candidate.major ?? 'Major not set'}</Text>
               <Text style={styles.meta}>{candidate.universityName ?? 'University not set'}</Text>
+              {candidate.review?.status && candidate.review.status !== 'none' ? (
+                <Text style={styles.meta}>Review: {candidate.review.status}</Text>
+              ) : null}
             </View>
           </Pressable>
         ))}
-        {bookmarks.length === 0 ? <Text style={styles.body}>No bookmarked candidates yet.</Text> : null}
       </View>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
     </RecruiterContent>
   );
 }
@@ -64,6 +88,5 @@ const styles = StyleSheet.create({
   avatarFallbackText: { color: colors.accent, fontSize: 22, fontWeight: '900' },
   name: { color: colors.text, fontSize: 16, fontWeight: '900' },
   body: { color: colors.muted, fontSize: 14, lineHeight: 20 },
-  meta: { color: colors.muted, fontSize: 12, fontWeight: '700' },
-  error: { marginTop: 14, color: colors.danger, fontSize: 14, lineHeight: 20 }
+  meta: { color: colors.muted, fontSize: 12, fontWeight: '700' }
 });

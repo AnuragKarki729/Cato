@@ -56,12 +56,25 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
 
   if (!response.ok) {
     const errorText = await response.text();
+    let message = `API request failed: ${response.status}`;
+
+    try {
+      const parsed = JSON.parse(errorText) as { error?: string };
+      if (parsed.error) {
+        message = parsed.error;
+      }
+    } catch {
+      if (errorText.trim()) {
+        message = errorText;
+      }
+    }
+
     console.error('[api-debug] response error:', {
       path,
       status: response.status,
       body: errorText
     });
-    throw new Error(`API request failed: ${response.status}`);
+    throw new Error(message);
   }
 
   return response.json() as Promise<T>;

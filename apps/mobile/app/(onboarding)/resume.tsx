@@ -29,7 +29,7 @@ export default function ResumeScreen() {
     getResume(session.access_token).then((result) => {
       setResume(result.resume);
     });
-  }, [session]);
+  }, [session?.access_token]);
 
   async function handleSkipResume() {
     if (!session?.access_token) {
@@ -69,11 +69,7 @@ export default function ResumeScreen() {
         privacyPolicy: true
       });
       const picked = await DocumentPicker.getDocumentAsync({
-        type: [
-          'application/pdf',
-          'application/msword',
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-        ],
+        type: 'application/pdf',
         multiple: false,
         copyToCacheDirectory: true
       });
@@ -83,12 +79,18 @@ export default function ResumeScreen() {
       }
 
       const asset = picked.assets[0];
-      const mimeType = asset.mimeType ?? 'application/octet-stream';
-      const dataUri = await readUriAsDataUri(asset.uri, mimeType);
+      const fileType = getResumeFileType(asset.name, asset.mimeType);
+
+      if (!fileType) {
+        setError('Please upload a PDF resume.');
+        return;
+      }
+
+      const dataUri = await readUriAsDataUri(asset.uri, 'application/pdf');
       const result = await uploadResume(session.access_token, {
         dataUri,
         originalFileName: asset.name,
-        fileType: getResumeFileType(asset.name, asset.mimeType),
+        fileType,
         fileSizeBytes: asset.size ?? 1
       });
 
@@ -105,7 +107,7 @@ export default function ResumeScreen() {
     <Screen centered>
       <LoadingOverlay message="Saving your resume..." visible={isSubmitting} />
       <Text style={styles.title}>Resume</Text>
-      <Text style={styles.body}>Upload a PDF, DOC, or DOCX resume, or continue without one.</Text>
+      <Text style={styles.body}>Upload a PDF resume, or continue without one.</Text>
       <View style={styles.actions}>
         <Pressable onPress={() => setHasConsent((current) => !current)} style={styles.consentRow}>
           <View style={[styles.checkbox, hasConsent ? styles.checkedBox : null]} />
@@ -119,7 +121,7 @@ export default function ResumeScreen() {
           Continue with no resume
         </Button>
       </View>
-      {resume ? <StatusBanner message={`Resume status: ${resume.softSkillGenerationStatus}`} /> : null}
+      {resume ? <StatusBanner message={resume.secureUrl ? 'Resume saved.' : 'Continuing without resume.'} /> : null}
       {error ? <StatusBanner message={error} tone="danger" /> : null}
     </Screen>
   );

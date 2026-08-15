@@ -1,7 +1,7 @@
 import type { Collection, Db, ObjectId, WithId } from 'mongodb';
 import { collections } from '../db/collections.js';
 
-type ResumeFileType = 'pdf' | 'doc' | 'docx';
+type ResumeFileType = 'pdf';
 type ResumeStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'skipped';
 
 export type ResumeDocument = {
@@ -34,6 +34,10 @@ type SaveUploadedResumeInput = {
 
 export function resumesCollection(db: Db): Collection<ResumeDocument> {
   return db.collection<ResumeDocument>(collections.resumes);
+}
+
+export async function ensureResumeIndexes(db: Db) {
+  await resumesCollection(db).createIndex({ applicantId: 1 }, { unique: true });
 }
 
 export async function findResumeByApplicantId(db: Db, applicantId: ObjectId) {

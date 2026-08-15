@@ -13,19 +13,19 @@ import {
 import { saveDummySoftSkills } from '../repositories/softSkills.repo.js';
 import {
   deleteCloudinaryAsset,
-  uploadResumePreviewPdfToCloudinary,
   uploadResumeToCloudinary
 } from '../services/cloudinary.service.js';
 import { isAtLeastOnboardingStatus } from '../services/onboarding.service.js';
-import { convertResumeDataUriToPdfDataUri } from '../services/resumeConversion.service.js';
 import { generateDummySoftSkills } from '../services/softSkillsDummy.service.js';
 
 const maxResumeBytes = 10 * 1024 * 1024;
 
 const uploadResumeSchema = z.object({
-  dataUri: z.string().min(1),
-  originalFileName: z.string().min(1),
-  fileType: z.enum(['pdf', 'doc', 'docx']),
+  dataUri: z.string().startsWith('data:application/pdf;base64,'),
+  originalFileName: z.string().min(1).refine((fileName) => fileName.toLowerCase().endsWith('.pdf'), {
+    message: 'Resume must be a PDF file'
+  }),
+  fileType: z.literal('pdf'),
   fileSizeBytes: z.number().int().positive().max(maxResumeBytes)
 });
 
@@ -92,22 +92,6 @@ export async function resumeRoutes(app: FastifyInstance) {
       dataUri: parsed.data.dataUri,
       supabaseUserId: user.id
     });
-    let previewUpload: Awaited<ReturnType<typeof uploadResumePreviewPdfToCloudinary>> | null = null;
-
-    try {
-      previewUpload =
-        parsed.data.fileType === 'pdf'
-          ? null
-          : await uploadResumePreviewPdfToCloudinary({
-            dataUri: await convertResumeDataUriToPdfDataUri(parsed.data.dataUri, parsed.data.fileType),
-              publicId: `${upload.public_id.split('/').pop() ?? 'resume'}_preview.pdf`,
-              supabaseUserId: user.id
-            });
-    } catch (conversionError) {
-      await deleteCloudinaryAsset(upload.public_id, 'raw');
-      throw conversionError;
-    }
-
     if (existingResume?.cloudinaryPublicId) {
       await deleteCloudinaryAsset(existingResume.cloudinaryPublicId, 'raw');
     }
@@ -123,8 +107,8 @@ export async function resumeRoutes(app: FastifyInstance) {
       applicantId: applicant._id,
       cloudinaryPublicId: upload.public_id,
       secureUrl: upload.secure_url,
-      previewCloudinaryPublicId: previewUpload?.public_id ?? upload.public_id,
-      previewUrl: previewUpload?.secure_url ?? upload.secure_url,
+      previewCloudinaryPublicId: upload.public_id,
+      previewUrl: upload.secure_url,
       previewFileType: 'pdf',
       originalFileName: parsed.data.originalFileName,
       fileType: parsed.data.fileType,

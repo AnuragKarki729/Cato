@@ -27,7 +27,7 @@ export default function DeeperVideoScreen() {
     setError(null);
 
     try {
-      startQueuedVideoUpload('30-second', uploadRecordedVideoToCloudinary(session.access_token, '30-second', video));
+      startQueuedVideoUpload('30-second', () => uploadRecordedVideoToCloudinary(session.access_token, '30-second', video));
       router.replace('/(onboarding)/soft-skills');
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : 'Unable to start deeper video upload');

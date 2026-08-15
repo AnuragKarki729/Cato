@@ -9,6 +9,7 @@ type OnboardingStatusState = {
 };
 
 export function useOnboardingStatus(accessToken?: string): OnboardingStatusState {
+  const [retryVersion, setRetryVersion] = useState(0);
   const [state, setState] = useState<OnboardingStatusState>({
     error: null,
     isLoading: Boolean(accessToken),
@@ -27,6 +28,12 @@ export function useOnboardingStatus(accessToken?: string): OnboardingStatusState
 
     const token = accessToken;
     let isMounted = true;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+
+    setState((current) => ({
+      ...current,
+      isLoading: !current.status && !current.error
+    }));
 
     async function loadOnboardingStatus() {
       try {
@@ -46,6 +53,11 @@ export function useOnboardingStatus(accessToken?: string): OnboardingStatusState
             isLoading: false,
             status: null
           });
+          retryTimer = setTimeout(() => {
+            if (isMounted) {
+              setRetryVersion((version) => version + 1);
+            }
+          }, 2500);
         }
       }
     }
@@ -54,8 +66,11 @@ export function useOnboardingStatus(accessToken?: string): OnboardingStatusState
 
     return () => {
       isMounted = false;
+      if (retryTimer) {
+        clearTimeout(retryTimer);
+      }
     };
-  }, [accessToken]);
+  }, [accessToken, retryVersion]);
 
   return state;
 }

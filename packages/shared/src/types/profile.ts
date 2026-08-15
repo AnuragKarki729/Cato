@@ -13,10 +13,61 @@ export type Internship = {
   updatedAt: string;
 };
 
+export type ApplicantProjectType = 'built_project' | 'research' | 'thesis' | 'video' | 'writing' | 'other';
+
+export type ApplicantProject = {
+  id: string;
+  title: string;
+  type: ApplicantProjectType;
+  description: string;
+  linkUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ApplicantActivityType =
+  | 'profile_viewed'
+  | 'resume_opened'
+  | 'deeper_signal_opened'
+  | 'bookmarked'
+  | 'shortlisted'
+  | 'interest_sent'
+  | 'message_sent';
+
+export type ApplicantActivity = {
+  id: string;
+  applicantId: string;
+  recruiterId?: string;
+  type: ApplicantActivityType;
+  title: string;
+  body: string;
+  actorName?: string;
+  actorCompanyName?: string;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+};
+
+export type ApplicantActivityResponse = {
+  metrics: {
+    profileViews: number;
+    resumeOpens: number;
+    bookmarks: number;
+    shortlists: number;
+  };
+  recent: ApplicantActivity[];
+};
+
 export type SaveInternshipRequest = {
   company: string;
   durationMonths: number;
   roleDepartment: string;
+};
+
+export type SaveApplicantProjectRequest = {
+  title: string;
+  type: ApplicantProjectType;
+  description: string;
+  linkUrl?: string;
 };
 
 export type CompleteProfileRequest = SaveEducationRequest & {
@@ -65,6 +116,7 @@ export type ProfileResponse = {
   applicant: Applicant;
   education: EducationProfile | null;
   internships: Internship[];
+  projects: ApplicantProject[];
   resume: Resume | null;
   signal: ApplicantSignal | null;
   softSkills: SoftSkillOutput | null;
@@ -73,6 +125,10 @@ export type ProfileResponse = {
 
 export type InternshipResponse = {
   internship: Internship;
+};
+
+export type ApplicantProjectResponse = {
+  project: ApplicantProject;
 };
 
 export type SoftSkillUpdateRequest = {

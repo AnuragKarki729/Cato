@@ -1,5 +1,6 @@
 import type { Collection, Db, ObjectId, WithId } from 'mongodb';
 import { collections } from '../db/collections.js';
+import { deriveAcademicFieldIds } from '../data/academicFields.js';
 
 type SaveEducationRequest = {
   universityUnitId?: string;
@@ -14,6 +15,8 @@ type SaveEducationRequest = {
 
 export type EducationProfileDocument = SaveEducationRequest & {
   applicantId: ObjectId;
+  majorFieldIds?: string[];
+  minorFieldIds?: string[];
   createdAt: Date;
   updatedAt: Date;
 };
@@ -22,12 +25,28 @@ export function educationProfilesCollection(db: Db): Collection<EducationProfile
   return db.collection<EducationProfileDocument>(collections.educationProfiles);
 }
 
+export async function ensureEducationIndexes(db: Db) {
+  await Promise.all([
+    educationProfilesCollection(db).createIndex({ applicantId: 1 }, { unique: true }),
+    educationProfilesCollection(db).createIndex({ universityUnitId: 1 }),
+    educationProfilesCollection(db).createIndex({ universityName: 1 }),
+    educationProfilesCollection(db).createIndex({ major: 1 }),
+    educationProfilesCollection(db).createIndex({ majorFieldIds: 1 }),
+    educationProfilesCollection(db).createIndex({ minorFieldIds: 1 }),
+    educationProfilesCollection(db).createIndex({ semesterNumber: 1 }),
+    educationProfilesCollection(db).createIndex({ gpa: 1 }),
+    educationProfilesCollection(db).createIndex({ universityName: 1, major: 1, semesterNumber: 1, gpa: 1 })
+  ]);
+}
+
 export async function upsertEducationProfile(
   db: Db,
   applicantId: ObjectId,
   input: SaveEducationRequest
 ) {
   const now = new Date();
+  const majorFieldIds = deriveAcademicFieldIds(input.major);
+  const minorFieldIds = deriveAcademicFieldIds(input.minor);
 
   await educationProfilesCollection(db).updateOne(
     { applicantId },
@@ -38,6 +57,8 @@ export async function upsertEducationProfile(
       },
       $set: {
         ...input,
+        majorFieldIds,
+        minorFieldIds,
         updatedAt: now
       }
     },
@@ -66,7 +87,9 @@ export function serializeEducationProfile(education: WithId<EducationProfileDocu
     semesterNumber: education.semesterNumber,
     gpa: education.gpa,
     major: education.major,
+    majorFieldIds: education.majorFieldIds ?? [],
     minor: education.minor,
+    minorFieldIds: education.minorFieldIds ?? [],
     updatedAt: education.updatedAt.toISOString()
   };
 }

@@ -34,8 +34,9 @@ module.exports = {
   icon: './assets/icon.png',
   userInterfaceStyle: 'automatic',
   ios: {
-    bundleIdentifier: 'com.cato.poc',
-    supportsTablet: false
+    bundleIdentifier: 'com.anuragkarki.cato',
+    supportsTablet: false,
+    usesAppleSignIn: true
   },
   android: {
     adaptiveIcon: {
@@ -43,7 +44,7 @@ module.exports = {
       foregroundImage: './assets/adaptive-icon.png'
     },
     package: 'com.cato.poc',
-    versionCode: 2
+    versionCode: 3
   },
   extra: {
     googleWebClientId: getGoogleWebClientId(),
@@ -51,5 +52,14 @@ module.exports = {
       projectId: '8c6b942e-11cb-43e3-b6fc-9a2740c80fb4'
     }
   },
-  plugins: ['expo-router']
+  plugins: [
+    'expo-router',
+    'expo-apple-authentication',
+    [
+      'expo-image-picker',
+      {
+        photosPermission: 'Allow Cato to access your videos so you can upload a take from your library.'
+      }
+    ]
+  ]
 };

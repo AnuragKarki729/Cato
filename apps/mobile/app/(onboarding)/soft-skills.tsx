@@ -6,7 +6,7 @@ import type { SoftSkillOutput } from '@cato/shared';
 import { getSoftSkills } from '../../src/api/resume';
 import { Screen } from '../../src/components/Screen';
 import { useSession } from '../../src/hooks/useSession';
-import { useQueuedVideoUploads, waitForQueuedVideoUpload } from '../../src/media/videoUploadQueue';
+import { retryQueuedVideoUpload, useQueuedVideoUploads, waitForQueuedVideoUpload } from '../../src/media/videoUploadQueue';
 import { colors, controls, radii, spacing, typography } from '../../src/theme';
 
 const fallbackSkills = [
@@ -46,6 +46,7 @@ export default function SoftSkillsScreen() {
   const { session } = useSession();
   const queuedUploads = useQueuedVideoUploads();
   const [softSkills, setSoftSkills] = useState<SoftSkillOutput | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!session?.access_token) {
@@ -55,6 +56,8 @@ export default function SoftSkillsScreen() {
     let isMounted = true;
     const token = session.access_token;
 
+    setUploadError(null);
+
     waitForQueuedVideoUpload('30-second')
       .then(() => getSoftSkills(token))
       .then((result) => {
@@ -63,6 +66,9 @@ export default function SoftSkillsScreen() {
         }
       })
       .catch((error) => {
+        if (isMounted) {
+          setUploadError(error instanceof Error ? error.message : 'Unable to finish deeper signal upload');
+        }
         console.error('[soft-skills-debug] unable to refresh soft skills:', {
           message: error instanceof Error ? error.message : 'Unable to refresh soft skills'
         });
@@ -79,10 +85,33 @@ export default function SoftSkillsScreen() {
     <Screen scroll>
       <Text style={styles.title}>Your soft skills</Text>
       <Text style={styles.body}>
-        {queuedUploads.thirtySecond
+        {queuedUploads.thirtySecondFailed
+          ? 'Your deeper signal upload needs a retry.'
+          : queuedUploads.thirtySecond
           ? 'Finishing your video upload, then refreshing your signal.'
           : 'Powered by your stories, takes, and responses.'}
       </Text>
+      {queuedUploads.thirtySecondFailed ? (
+        <Pressable
+          onPress={() => {
+            setUploadError(null);
+            retryQueuedVideoUpload('30-second')
+              .then(() => (session?.access_token ? getSoftSkills(session.access_token) : null))
+              .then((result) => {
+                if (result) {
+                  setSoftSkills(result.softSkills);
+                }
+              })
+              .catch((retryError) => {
+                setUploadError(retryError instanceof Error ? retryError.message : 'Unable to retry deeper signal upload');
+              });
+          }}
+          style={styles.retryButton}
+        >
+          <Text style={styles.retryButtonText}>Retry Deeper Signal Upload</Text>
+        </Pressable>
+      ) : null}
+      {uploadError ? <Text style={styles.errorText}>{uploadError}</Text> : null}
       <View style={styles.list}>
         {skills.map((skill, index) => (
           <View key={`${skill.label}-${index}`} style={styles.skillRow}>
@@ -112,7 +141,9 @@ export default function SoftSkillsScreen() {
         <Text style={styles.edgeBody}>Your profile is taking shape. Save your profile so recruiters can understand your story.</Text>
       </View>
       <Pressable onPress={() => router.replace('/(onboarding)/profile-form')} style={styles.button}>
-        <Text style={styles.buttonText}>Save My Profile</Text>
+        <Text style={styles.buttonText}>
+          {queuedUploads.thirtySecond ? 'Continue While Deeper Signal Saves' : 'Save My Profile'}
+        </Text>
       </Pressable>
       <Pressable onPress={() => router.replace('/(onboarding)/deeper-signal')}>
         <Text style={styles.linkText}>Improve My Take</Text>
@@ -131,6 +162,24 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     color: colors.muted,
     ...typography.body
+  },
+  retryButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.lg,
+    minHeight: controls.buttonHeight,
+    borderRadius: radii.sm,
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg
+  },
+  retryButtonText: {
+    color: colors.primaryText,
+    ...typography.button
+  },
+  errorText: {
+    marginTop: spacing.md,
+    color: colors.danger,
+    ...typography.meta
   },
   list: {
     gap: spacing.md,

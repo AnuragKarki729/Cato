@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { claimAuthRole } from '../../src/api/auth';
 import { syncRecruiter } from '../../src/api/recruiter';
+import { signInWithApple } from '../../src/auth/appleSignIn';
 import { signInWithGoogle } from '../../src/auth/googleSignIn';
 import { Button } from '../../src/components/Button';
 import { CatoLogoMark } from '../../src/components/CatoLogoMark';
@@ -11,6 +12,7 @@ import { Screen } from '../../src/components/Screen';
 import { StatusBanner } from '../../src/components/StatusBanner';
 import { TextAction } from '../../src/components/TextAction';
 import { useKeyboardAwareScroll } from '../../src/forms/useKeyboardAwareScroll';
+import { refreshAuthRole } from '../../src/hooks/useAuthRole';
 import { supabase } from '../../src/lib/supabase';
 import { colors, spacing, typography } from '../../src/theme';
 
@@ -36,6 +38,7 @@ export default function RecruiterLoginScreen() {
       }
 
       await claimAuthRole(data.session.access_token, { role: 'recruiter' });
+      refreshAuthRole();
       await syncRecruiter(data.session.access_token);
       router.replace('/(recruiter)/dashboard');
     } catch (loginError) {
@@ -61,6 +64,7 @@ export default function RecruiterLoginScreen() {
 
       if (data.session) {
         await claimAuthRole(data.session.access_token, { role: 'recruiter' });
+        refreshAuthRole();
         await syncRecruiter(data.session.access_token);
         router.replace('/(recruiter)/dashboard');
         return;
@@ -74,12 +78,17 @@ export default function RecruiterLoginScreen() {
     }
   }
 
-  async function handleGoogleSignIn() {
+  async function handleProviderSignIn(provider: 'apple' | 'google') {
     setError(null);
     setIsSubmitting(true);
 
     try {
-      await signInWithGoogle();
+      if (provider === 'apple') {
+        await signInWithApple();
+      } else {
+        await signInWithGoogle();
+      }
+
       const { data } = await supabase.auth.getSession();
 
       if (!data.session) {
@@ -87,17 +96,18 @@ export default function RecruiterLoginScreen() {
       }
 
       await claimAuthRole(data.session.access_token, { role: 'recruiter' });
+      refreshAuthRole();
       await syncRecruiter(data.session.access_token);
       router.replace('/(recruiter)/dashboard');
-    } catch (googleError) {
-      setError(googleError instanceof Error ? googleError.message : 'Google recruiter login failed');
+    } catch (providerError) {
+      setError(providerError instanceof Error ? providerError.message : 'Recruiter login failed');
     } finally {
       setIsSubmitting(false);
     }
   }
 
   return (
-    <Screen scroll scrollRef={keyboardScroll.scrollRef}>
+    <Screen onScroll={keyboardScroll.handleScroll} scroll scrollRef={keyboardScroll.scrollRef}>
       <CatoLogoMark size="lg" />
       <Text style={styles.title}>Welcome back</Text>
       <Text style={styles.body}>Log in to your recruiter account.</Text>
@@ -141,9 +151,26 @@ export default function RecruiterLoginScreen() {
       >
         Create recruiter account
       </Button>
-      <Button disabled={isSubmitting} fullWidth onPress={handleGoogleSignIn} style={styles.secondaryAction} variant="secondary">
+      <Button
+        disabled={isSubmitting}
+        fullWidth
+        onPress={() => handleProviderSignIn('google')}
+        style={styles.secondaryAction}
+        variant="secondary"
+      >
         Continue with Google
       </Button>
+      {Platform.OS === 'ios' ? (
+        <Button
+          disabled={isSubmitting}
+          fullWidth
+          onPress={() => handleProviderSignIn('apple')}
+          style={styles.secondaryAction}
+          variant="secondary"
+        >
+          Continue with Apple
+        </Button>
+      ) : null}
       <TextAction onPress={() => router.replace('/(auth)/sign-in')}>Back to applicant sign in</TextAction>
       {error ? <StatusBanner message={error} tone="danger" /> : null}
     </Screen>

@@ -5,6 +5,7 @@ import { colors } from '../theme';
 
 type RecruiterNavProps = {
   active: 'home' | 'feed' | 'search' | 'bookmarks' | 'messages' | 'account';
+  homeBadgeCount?: number;
 };
 
 const items = [
@@ -15,7 +16,7 @@ const items = [
   { key: 'account', icon: 'person-outline', label: 'Account', route: '/(recruiter)/upgrade' }
 ] as const;
 
-export function RecruiterNav({ active }: RecruiterNavProps) {
+export function RecruiterNav({ active, homeBadgeCount = 0 }: RecruiterNavProps) {
   return (
     <View style={styles.nav}>
       {items.map((item) => {
@@ -23,7 +24,14 @@ export function RecruiterNav({ active }: RecruiterNavProps) {
 
         return (
           <Pressable key={item.key} onPress={() => router.push(item.route)} style={styles.item}>
-            <Ionicons color={selected ? colors.primary : colors.muted} name={item.icon} size={20} />
+            <View>
+              <Ionicons color={selected ? colors.primary : colors.muted} name={item.icon} size={20} />
+              {item.key === 'home' && homeBadgeCount > 0 ? (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{homeBadgeCount > 9 ? '9+' : homeBadgeCount}</Text>
+                </View>
+              ) : null}
+            </View>
             <Text style={[styles.label, selected ? styles.selectedLabel : null]}>{item.label}</Text>
           </Pressable>
         );
@@ -49,5 +57,22 @@ const styles = StyleSheet.create({
   },
   selectedLabel: {
     color: colors.primary
+  },
+  badge: {
+    position: 'absolute',
+    top: -7,
+    right: -10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 17,
+    height: 17,
+    borderRadius: 9,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 4
+  },
+  badgeText: {
+    color: colors.primaryText,
+    fontSize: 10,
+    fontWeight: '900'
   }
 });

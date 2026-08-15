@@ -11,8 +11,10 @@ type RecruiterVideoFeedCardProps = {
   isActive: boolean;
   isPaused: boolean;
   isBookmarking?: boolean;
+  isChromeDimmed?: boolean;
   onKnowMore: (candidate: RecruiterCandidate) => void;
   onToggleBookmark?: (candidate: RecruiterCandidate) => void;
+  onToggleChromeDimmed?: () => void;
 };
 
 export function RecruiterVideoFeedCard({
@@ -20,9 +22,11 @@ export function RecruiterVideoFeedCard({
   height,
   isActive,
   isBookmarking = false,
+  isChromeDimmed = false,
   isPaused,
   onKnowMore,
-  onToggleBookmark
+  onToggleBookmark,
+  onToggleChromeDimmed
 }: RecruiterVideoFeedCardProps) {
   const player = useVideoPlayer(candidate.tenSecondVideoUrl ?? null, (nextPlayer) => {
     nextPlayer.loop = true;
@@ -45,6 +49,11 @@ export function RecruiterVideoFeedCard({
 
   return (
     <View style={[styles.card, { height }]}>
+      <Pressable
+        accessibilityLabel={isChromeDimmed ? 'Show candidate details' : 'Dim candidate details'}
+        onPress={onToggleChromeDimmed}
+        style={styles.videoTapTarget}
+      />
       {candidate.tenSecondVideoUrl ? (
         <VideoView
           allowsPictureInPicture={false}
@@ -61,9 +70,6 @@ export function RecruiterVideoFeedCard({
         </View>
       )}
       <View style={styles.scrim} />
-      <View style={styles.topBadge}>
-        <Text style={styles.topBadgeText}>Short take</Text>
-      </View>
       {onToggleBookmark ? (
         <Pressable
           accessibilityLabel={candidate.bookmarked ? 'Remove bookmark' : 'Bookmark candidate'}
@@ -78,7 +84,10 @@ export function RecruiterVideoFeedCard({
           />
         </Pressable>
       ) : null}
-      <View style={styles.content}>
+      <View
+        pointerEvents={isChromeDimmed ? 'none' : 'box-none'}
+        style={[styles.content, isChromeDimmed ? styles.contentDimmed : styles.contentReadable]}
+      >
         <Text style={styles.name}>{candidate.name ?? 'Applicant'}</Text>
         <Text style={styles.meta}>
           {[candidate.semesterLabel, candidate.major, candidate.universityName].filter(Boolean).join(' · ') || 'Profile details pending'}
@@ -103,6 +112,10 @@ const styles = StyleSheet.create({
     width: '100%',
     backgroundColor: colors.primary
   },
+  videoTapTarget: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1
+  },
   video: {
     ...StyleSheet.absoluteFillObject,
     width: '100%',
@@ -122,23 +135,11 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.28)'
   },
-  topBadge: {
-    position: 'absolute',
-    top: 56,
-    left: spacing.xl,
-    borderRadius: 999,
-    backgroundColor: 'rgba(251,250,247,0.88)',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
-  },
-  topBadgeText: {
-    color: colors.text,
-    ...typography.meta
-  },
   bookmarkButton: {
     position: 'absolute',
     top: 56,
     right: spacing.xl,
+    zIndex: 3,
     alignItems: 'center',
     justifyContent: 'center',
     width: 40,
@@ -155,9 +156,19 @@ const styles = StyleSheet.create({
   content: {
     position: 'absolute',
     right: spacing.xl,
-    bottom: 112,
+    bottom: 65,
     left: spacing.xl,
-    gap: spacing.md
+    zIndex: 2,
+    gap: spacing.md,
+    borderRadius: radii.sm,
+    padding: spacing.lg
+  },
+  contentReadable: {
+    backgroundColor: 'rgba(0,0,0,0.32)'
+  },
+  contentDimmed: {
+    backgroundColor: 'transparent',
+    opacity: 0.3
   },
   name: {
     color: colors.primaryText,

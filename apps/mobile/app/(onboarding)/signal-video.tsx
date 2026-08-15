@@ -97,7 +97,7 @@ export default function SignalVideoScreen() {
         video: true,
         privacyPolicy: true
       });
-      startQueuedVideoUpload('10-second', uploadRecordedVideoToCloudinary(session.access_token, '10-second', video));
+      startQueuedVideoUpload('10-second', () => uploadRecordedVideoToCloudinary(session.access_token, '10-second', video));
       router.replace('/(onboarding)/deeper-signal');
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : 'Unable to start signal video upload');

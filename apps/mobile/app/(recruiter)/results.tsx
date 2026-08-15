@@ -1,38 +1,86 @@
 import { useEffect, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import { router } from 'expo-router';
-import type { RecruiterCandidate } from '@cato/shared';
+import { router, useLocalSearchParams } from 'expo-router';
+import type { RecruiterCandidate, RecruiterCandidateReviewStatus, RecruiterCandidateSearchFilters } from '@cato/shared';
+import { academicFields, semesters } from '@cato/shared';
 import { getRecruiterCandidates } from '../../src/api/recruiter';
+import { LoadingScreen } from '../../src/components/LoadingScreen';
 import { RecruiterContent } from '../../src/recruiter/RecruiterContent';
+import { RecruiterEmptyState } from '../../src/recruiter/RecruiterEmptyState';
 import { useSession } from '../../src/hooks/useSession';
-import { colors, radii } from '../../src/theme';
+import { colors, radii, spacing, typography } from '../../src/theme';
 
 export default function RecruiterResultsScreen() {
   const { session } = useSession();
+  const params = useLocalSearchParams();
   const [candidates, setCandidates] = useState<RecruiterCandidate[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const filters = getFiltersFromParams(params);
+  const activeFilters = getActiveFilterLabels(filters);
 
   useEffect(() => {
     if (!session?.access_token) {
       return;
     }
 
-    getRecruiterCandidates(session.access_token)
+    setIsLoading(true);
+    setError(null);
+
+    getRecruiterCandidates(session.access_token, filters)
       .then((response) => setCandidates(response.candidates))
       .catch((candidateError) => {
         setError(candidateError instanceof Error ? candidateError.message : 'Unable to load candidates');
+      })
+      .finally(() => {
+        setIsLoading(false);
       });
-  }, [session]);
+  }, [JSON.stringify(filters), session]);
+
+  if (isLoading) {
+    return <LoadingScreen banner="Loading candidates" />;
+  }
+
+  if (error || candidates.length === 0) {
+    return (
+      <RecruiterContent>
+        <RecruiterEmptyState
+          actionLabel={error ? 'Back to dashboard' : 'Search again'}
+          body={
+            error ??
+            (activeFilters.length > 0 ? 'No completed profiles matched these filters.' : 'Completed applicant profiles will appear here soon.')
+          }
+          onAction={() => router.replace(error ? '/(recruiter)/dashboard' : '/(recruiter)/search')}
+          title={error ? 'Unable to load candidates' : activeFilters.length > 0 ? 'No matches yet' : 'No applicants yet'}
+        />
+      </RecruiterContent>
+    );
+  }
 
   return (
     <RecruiterContent>
       <View style={styles.row}>
-        <Text style={styles.title}>128 results</Text>
+        <Text style={styles.title}>{candidates.length} {candidates.length === 1 ? 'result' : 'results'}</Text>
         <Pressable onPress={() => router.push('/(recruiter)/feed')}>
           <Text style={styles.linkText}>Video feed</Text>
         </Pressable>
       </View>
-      <Text style={styles.body}>Swipe to preview 10-second videos.</Text>
+      <Text style={styles.body}>
+        {filters.categoryFieldId || filters.categoryFieldIds?.length
+          ? 'Results prioritize complete profiles, then category match, internships, and projects.'
+          : activeFilters.length > 0
+          ? 'Showing completed profiles matching your filters.'
+          : 'Showing completed applicant profiles.'}
+      </Text>
+      {activeFilters.length > 0 ? (
+        <View style={styles.activeFilters}>
+          {activeFilters.map((filter) => (
+            <View key={filter} style={styles.activeChip}>
+              <Text style={styles.activeChipText}>{filter}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
       <View style={styles.list}>
         {candidates.map((candidate) => (
           <Pressable
@@ -49,35 +97,148 @@ export default function RecruiterResultsScreen() {
             )}
             <View style={styles.cardBody}>
               <Text style={styles.name}>{candidate.name ?? 'Applicant'}</Text>
-              <Text style={styles.body}>{candidate.major ?? 'Major not set'}</Text>
-              <Text style={styles.meta}>{candidate.universityName ?? 'University not set'}</Text>
+              {candidate.categoryMatch ? (
+                <View style={styles.matchBadge}>
+                  <Text style={styles.matchBadgeText}>{candidate.categoryMatch.label}</Text>
+                </View>
+              ) : null}
+              <Text style={styles.body}>{candidate.major ?? 'Major not set'} · GPA {candidate.gpa ?? 'N/A'}</Text>
+              <Text style={styles.meta}>{candidate.universityName ?? 'University not set'} · {candidate.semesterLabel ?? 'Semester not set'}</Text>
+              {candidate.promptFieldLabel ? <Text style={styles.meta}>Prompt: {candidate.promptFieldLabel}</Text> : null}
+              {candidate.review?.status && candidate.review.status !== 'none' ? (
+                <Text style={styles.meta}>Review: {candidate.review.status}</Text>
+              ) : null}
+              {candidate.interestRequestStatus ? <Text style={styles.meta}>Request: {candidate.interestRequestStatus}</Text> : null}
             </View>
             <View style={styles.duration}>
               <Text style={styles.durationText}>00:10</Text>
             </View>
           </Pressable>
         ))}
-        {candidates.length === 0 ? <Text style={styles.body}>No completed applicant profiles yet.</Text> : null}
       </View>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
     </RecruiterContent>
   );
 }
 
+const recruiterSemesterLabels = new Map<number, string>([
+  [1, 'Year 1: Sem 1'],
+  [2, 'Year 1: Sem 2'],
+  [3, 'Year 2: Sem 1'],
+  [4, 'Year 2: Sem 2'],
+  [5, 'Year 3: Sem 1'],
+  [6, 'Year 3: Sem 2'],
+  [7, 'Year 4: Sem 1'],
+  [8, 'Year 4: Sem 2'],
+  [9, 'Year 5+'],
+  [10, 'Graduate student'],
+  [99, 'Graduating this semester'],
+  [100, 'Graduated']
+]);
+
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  title: { color: colors.text, fontSize: 28, fontWeight: '900' },
-  linkText: { color: colors.purple, fontSize: 14, fontWeight: '800' },
-  body: { color: colors.muted, fontSize: 14, lineHeight: 20 },
-  list: { gap: 12, marginTop: 18 },
-  card: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: colors.border, borderRadius: radii.sm, backgroundColor: colors.surface, padding: 10 },
+  title: { color: colors.text, ...typography.screenTitle },
+  linkText: { color: colors.purple, ...typography.label },
+  body: { color: colors.muted, ...typography.body },
+  activeFilters: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.md },
+  activeChip: { borderRadius: radii.sm, backgroundColor: colors.surfaceMuted, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
+  activeChipText: { color: colors.text, ...typography.meta },
+  list: { gap: spacing.md, marginTop: spacing.lg },
+  card: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderWidth: 1, borderColor: colors.border, borderRadius: radii.sm, backgroundColor: colors.surface, padding: spacing.md },
   avatar: { width: 64, height: 76, borderRadius: 8, backgroundColor: colors.border },
   avatarFallback: { alignItems: 'center', justifyContent: 'center', width: 64, height: 76, borderRadius: 8, backgroundColor: colors.primary },
   avatarFallbackText: { color: colors.accent, fontSize: 24, fontWeight: '900' },
   cardBody: { flex: 1 },
-  name: { color: colors.text, fontSize: 16, fontWeight: '900' },
-  meta: { marginTop: 3, color: colors.muted, fontSize: 12, fontWeight: '700' },
+  name: { color: colors.text, ...typography.label },
+  matchBadge: { alignSelf: 'flex-start', marginTop: spacing.xs, marginBottom: spacing.xs, borderRadius: 999, backgroundColor: colors.accent, paddingHorizontal: spacing.sm, paddingVertical: 3 },
+  matchBadgeText: { color: colors.text, ...typography.meta },
+  meta: { marginTop: 3, color: colors.muted, ...typography.meta },
   duration: { borderRadius: 8, backgroundColor: colors.primary, paddingHorizontal: 8, paddingVertical: 5 },
-  durationText: { color: colors.primaryText, fontSize: 11, fontWeight: '900' },
-  error: { marginTop: 14, color: colors.danger, fontSize: 14, lineHeight: 20 }
+  durationText: { color: colors.primaryText, fontSize: 11, fontWeight: '900' }
 });
+
+function getSingleParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function getNumberParam(value: string | string[] | undefined) {
+  const parsed = Number(getSingleParam(value));
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function getArrayParam(value: string | string[] | undefined) {
+  if (!value) {
+    return undefined;
+  }
+
+  const values = Array.isArray(value) ? value : [value];
+  const normalized = values.flatMap((item) => String(item).split(',')).map((item) => item.trim()).filter(Boolean);
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+function getNumberArrayParam(value: string | string[] | undefined) {
+  const values = getArrayParam(value)
+    ?.map((item) => Number(item))
+    .filter((item) => Number.isFinite(item));
+
+  return values && values.length > 0 ? values : undefined;
+}
+
+function getBooleanParam(value: string | string[] | undefined) {
+  const normalized = getSingleParam(value);
+  if (normalized === 'true') return true;
+  if (normalized === 'false') return false;
+  return undefined;
+}
+
+function getFiltersFromParams(params: Record<string, string | string[] | undefined>): RecruiterCandidateSearchFilters {
+  const reviewStatus = getSingleParam(params.reviewStatus) as RecruiterCandidateReviewStatus | undefined;
+
+  return {
+    q: getSingleParam(params.q),
+    categoryFieldId: getSingleParam(params.categoryFieldId),
+    categoryFieldIds: getArrayParam(params.categoryFieldIds),
+    university: getSingleParam(params.university),
+    universities: getArrayParam(params.universities),
+    major: getSingleParam(params.major),
+    majors: getArrayParam(params.majors),
+    semesterNumber: getNumberParam(params.semesterNumber),
+    semesterNumbers: getNumberArrayParam(params.semesterNumbers),
+    gpaMin: getNumberParam(params.gpaMin),
+    gpaMax: getNumberParam(params.gpaMax),
+    hasInternship: getBooleanParam(params.hasInternship),
+    bookmarkedOnly: getBooleanParam(params.bookmarkedOnly),
+    reviewStatus
+  };
+}
+
+function getActiveFilterLabels(filters: RecruiterCandidateSearchFilters) {
+  const categoryLabels = [
+    filters.categoryFieldId ? academicFields.find((field) => field.id === filters.categoryFieldId)?.label : undefined,
+    ...(filters.categoryFieldIds ?? []).map((fieldId) => academicFields.find((field) => field.id === fieldId)?.label)
+  ].filter((label): label is string => Boolean(label));
+  const semesterLabels = [
+    filters.semesterNumber ? getRecruiterSemesterLabel(filters.semesterNumber) : undefined,
+    ...(filters.semesterNumbers ?? []).map(getRecruiterSemesterLabel)
+  ].filter((label): label is string => Boolean(label));
+
+  return [
+    filters.q ? `Search: ${filters.q}` : undefined,
+    categoryLabels.length > 0 ? `Category: ${Array.from(new Set(categoryLabels)).join(', ')}` : undefined,
+    filters.university ? `University: ${filters.university}` : undefined,
+    filters.universities?.length ? `University: ${filters.universities.join(', ')}` : undefined,
+    filters.major ? `Major: ${filters.major}` : undefined,
+    filters.majors?.length ? `Major: ${filters.majors.join(', ')}` : undefined,
+    semesterLabels.length > 0 ? `Semester: ${Array.from(new Set(semesterLabels)).join(', ')}` : undefined,
+    filters.gpaMin ? `GPA >= ${filters.gpaMin}` : undefined,
+    filters.gpaMax ? `GPA <= ${filters.gpaMax}` : undefined,
+    filters.hasInternship === true ? 'Has internship' : undefined,
+    filters.hasInternship === false ? 'No internship' : undefined,
+    filters.bookmarkedOnly ? 'Bookmarked' : undefined,
+    filters.reviewStatus ? `Review: ${filters.reviewStatus}` : undefined
+  ].filter((value): value is string => Boolean(value));
+}
+
+function getRecruiterSemesterLabel(semesterNumber: number) {
+  return recruiterSemesterLabels.get(semesterNumber) ?? semesters.find((semester) => semester.value === semesterNumber)?.label ?? `Semester ${semesterNumber}`;
+}

@@ -3,13 +3,17 @@ import { ScrollView, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing } from '../theme';
 
-export function RecruiterContent({ children }: PropsWithChildren) {
+type RecruiterContentProps = PropsWithChildren<{
+  bottomOffset?: number;
+}>;
+
+export function RecruiterContent({ bottomOffset = 0, children }: RecruiterContentProps) {
   const insets = useSafeAreaInsets();
 
   return (
     <ScrollView
       alwaysBounceVertical={false}
-      contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 96 }]}
+      contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 96 + bottomOffset }]}
       keyboardDismissMode="interactive"
       keyboardShouldPersistTaps="handled"
     >

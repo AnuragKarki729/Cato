@@ -20,6 +20,15 @@ export function internshipsCollection(db: Db): Collection<InternshipDocument> {
   return db.collection<InternshipDocument>(collections.internships);
 }
 
+export async function ensureInternshipIndexes(db: Db) {
+  await Promise.all([
+    internshipsCollection(db).createIndex({ applicantId: 1, createdAt: 1 }),
+    internshipsCollection(db).createIndex({ applicantId: 1, _id: 1 }),
+    internshipsCollection(db).createIndex({ applicantId: 1, roleDepartment: 1 }),
+    internshipsCollection(db).createIndex({ roleDepartment: 1 })
+  ]);
+}
+
 export async function findInternshipsByApplicantId(db: Db, applicantId: ObjectId) {
   return internshipsCollection(db).find({ applicantId }).sort({ createdAt: 1 }).toArray();
 }

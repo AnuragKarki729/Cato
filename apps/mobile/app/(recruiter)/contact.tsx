@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { contactRecruiterCandidate } from '../../src/api/recruiter';
+import { contactRecruiterCandidate, sendRecruiterInterestRequest } from '../../src/api/recruiter';
 import { Button } from '../../src/components/Button';
 import { Field } from '../../src/components/Field';
 import { Screen } from '../../src/components/Screen';
@@ -13,8 +13,14 @@ import { colors, spacing, typography } from '../../src/theme';
 export default function RecruiterContactScreen() {
   const { session } = useSession();
   const keyboardScroll = useKeyboardAwareScroll();
-  const { candidateId } = useLocalSearchParams<{ candidateId?: string }>();
-  const [message, setMessage] = useState('Hi, I came across your profile and would love to connect about an opportunity.');
+  const { candidateId, mode } = useLocalSearchParams<{ candidateId?: string; mode?: string }>();
+  const isMessageMode = mode === 'message';
+  const isResendMode = mode === 'resend';
+  const [message, setMessage] = useState(
+    isMessageMode
+      ? 'Hi, I would love to connect about an opportunity.'
+      : 'Your profile stood out because '
+  );
   const [error, setError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
 
@@ -28,21 +34,35 @@ export default function RecruiterContactScreen() {
     setError(null);
 
     try {
-      await contactRecruiterCandidate(session.access_token, candidateId, { body: message.trim() });
-      router.replace('/(recruiter)/messages');
+      if (isMessageMode) {
+        await contactRecruiterCandidate(session.access_token, candidateId, { body: message.trim() });
+      } else {
+        await sendRecruiterInterestRequest(session.access_token, candidateId, {
+          reason: message.trim(),
+          ...(isResendMode ? { resend: true } : {})
+        });
+      }
+      router.replace(isMessageMode ? '/(recruiter)/messages' : '/(recruiter)/dashboard');
     } catch (sendError) {
-      setError(sendError instanceof Error ? sendError.message : 'Unable to send message');
+      setError(sendError instanceof Error ? sendError.message : isMessageMode ? 'Unable to send message' : 'Unable to send interest request');
     } finally {
       setIsSending(false);
     }
   }
 
   return (
-    <Screen scroll scrollRef={keyboardScroll.scrollRef}>
-      <Text style={styles.title}>Contact Candidate</Text>
+    <Screen onScroll={keyboardScroll.handleScroll} scroll scrollRef={keyboardScroll.scrollRef}>
+      <Text style={styles.title}>{isMessageMode ? 'Message Candidate' : isResendMode ? 'Request Again' : 'Send Interest Request'}</Text>
+      <Text style={styles.body}>
+        {isMessageMode
+          ? 'This applicant accepted your interest request. Your message will appear in Messages.'
+          : isResendMode
+          ? 'Send a fresh request only when there is a clear new reason to connect.'
+          : 'This sends a request first. Messaging opens only if the applicant accepts.'}
+      </Text>
       <View onLayout={keyboardScroll.registerField('recruiter-message')}>
         <Field
-          label="Message"
+          label={isMessageMode ? 'Message' : 'Why are you interested?'}
           multiline
           onChangeText={setMessage}
           onFocus={() => keyboardScroll.focusField('recruiter-message')}
@@ -52,7 +72,7 @@ export default function RecruiterContactScreen() {
         />
       </View>
       <Button disabled={isSending || !message.trim()} onPress={handleSend} style={styles.primaryAction}>
-        {isSending ? 'Sending...' : 'Send Message'}
+        {isSending ? 'Sending...' : isMessageMode ? 'Send Message' : isResendMode ? 'Send New Request' : 'Send Interest Request'}
       </Button>
       {error ? <StatusBanner message={error} tone="danger" /> : null}
     </Screen>
@@ -63,6 +83,11 @@ const styles = StyleSheet.create({
   title: {
     color: colors.text,
     ...typography.screenTitle
+  },
+  body: {
+    marginTop: spacing.sm,
+    color: colors.muted,
+    ...typography.body
   },
   message: {
     minHeight: 220,

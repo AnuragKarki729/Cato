@@ -72,7 +72,9 @@ export async function getSupabaseUserFromToken(token: string) {
   const email = data.user.email ?? '';
   const userMetadata = data.user.user_metadata as Record<string, unknown>;
 
-  const authProvider: 'google' | 'email' = data.user.app_metadata.provider === 'google' ? 'google' : 'email';
+  const provider = data.user.app_metadata.provider;
+  const authProvider: 'google' | 'email' | 'apple' =
+    provider === 'google' || provider === 'apple' ? provider : 'email';
 
   return {
     id: data.user.id,

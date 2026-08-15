@@ -7,12 +7,13 @@ import { Screen } from '../../src/components/Screen';
 import { StatusBanner } from '../../src/components/StatusBanner';
 import { useSession } from '../../src/hooks/useSession';
 import { useKeyboardAwareScroll } from '../../src/forms/useKeyboardAwareScroll';
-import { waitForQueuedVideoUpload } from '../../src/media/videoUploadQueue';
+import { retryQueuedVideoUpload, useQueuedVideoUploads, waitForQueuedVideoUpload } from '../../src/media/videoUploadQueue';
 import { colors, radii, spacing, typography } from '../../src/theme';
 
 export default function DeeperSignalScreen() {
   const { session } = useSession();
   const keyboardScroll = useKeyboardAwareScroll();
+  const queuedUploads = useQueuedVideoUploads();
   const [isSeen, setIsSeen] = useState(false);
   const [thoughts, setThoughts] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +39,7 @@ export default function DeeperSignalScreen() {
   }
 
   return (
-    <Screen scroll scrollRef={keyboardScroll.scrollRef}>
+    <Screen onScroll={keyboardScroll.handleScroll} scroll scrollRef={keyboardScroll.scrollRef}>
       <Text style={styles.title}>Elaborate on your 10-second take.</Text>
       <Text style={styles.body}>
         Expand on your answer to share more context, meaning, or the story behind your take.
@@ -55,11 +56,25 @@ export default function DeeperSignalScreen() {
       />
       <Text style={styles.counter}>{thoughts.length}/500</Text>
       <Button onPress={() => handleSeen(false)} style={styles.primaryAction}>
-        {isSeen ? 'Ready for response' : 'Record My Response'}
+        {queuedUploads.tenSecond ? 'Finishing short take...' : isSeen ? 'Ready for response' : 'Record My Response'}
       </Button>
       <Button onPress={() => handleSeen(true)} style={styles.secondaryAction} variant="secondary">
         Skip for now
       </Button>
+      {queuedUploads.tenSecondFailed ? (
+        <Button
+          onPress={() => {
+            setError(null);
+            retryQueuedVideoUpload('10-second').catch((retryError) => {
+              setError(retryError instanceof Error ? retryError.message : 'Unable to retry short take upload');
+            });
+          }}
+          style={styles.secondaryAction}
+          variant="secondary"
+        >
+          Retry Short Take Upload
+        </Button>
+      ) : null}
       {error ? <StatusBanner message={error} tone="danger" /> : null}
     </Screen>
   );

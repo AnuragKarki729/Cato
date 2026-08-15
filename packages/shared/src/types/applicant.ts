@@ -1,6 +1,6 @@
 import type { OnboardingStatus } from '../constants/onboardingStatus';
 
-export type AuthProvider = 'google' | 'email';
+export type AuthProvider = 'google' | 'email' | 'apple';
 
 export type Applicant = {
   id: string;

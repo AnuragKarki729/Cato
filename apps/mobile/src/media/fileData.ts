@@ -20,9 +20,5 @@ export function getResumeFileType(fileName: string, mimeType?: string) {
     return 'pdf' as const;
   }
 
-  if (lowerName.endsWith('.docx')) {
-    return 'docx' as const;
-  }
-
-  return 'doc' as const;
+  return null;
 }

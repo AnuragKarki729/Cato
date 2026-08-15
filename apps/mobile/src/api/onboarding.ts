@@ -30,6 +30,7 @@ export function matchUniversityByEmail(accessToken: string, email: string) {
   return apiPost<UniversityMatchResponse>('/universities/match-email', accessToken, { email });
 }
 
-export function getSignalPrompts(accessToken: string) {
-  return apiGet<SignalPromptsResponse>('/signal-prompts', accessToken);
+export function getSignalPrompts(accessToken: string, fieldId?: string) {
+  const query = fieldId ? `?${new URLSearchParams({ fieldId }).toString()}` : '';
+  return apiGet<SignalPromptsResponse>(`/signal-prompts${query}`, accessToken);
 }

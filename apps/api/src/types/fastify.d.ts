@@ -6,7 +6,7 @@ declare module 'fastify' {
       id: string;
       email: string;
       name?: string;
-      authProvider: 'google' | 'email';
+      authProvider: 'google' | 'email' | 'apple';
     };
   }
 }

@@ -29,6 +29,17 @@ const protectedChecks = [
   { method: 'PATCH', path: '/profile/internships/000000000000000000000000' },
   { method: 'DELETE', path: '/profile/internships/000000000000000000000000' },
   { method: 'PATCH', path: '/profile/soft-skills' },
+  { method: 'POST', path: '/recruiter/auth/sync' },
+  { method: 'GET', path: '/recruiter/me' },
+  { method: 'GET', path: '/recruiter/dashboard' },
+  { method: 'GET', path: '/recruiter/candidates' },
+  { method: 'GET', path: '/recruiter/candidates?q=engineering' },
+  { method: 'GET', path: '/recruiter/candidates/000000000000000000000000' },
+  { method: 'GET', path: '/recruiter/bookmarks' },
+  { method: 'POST', path: '/recruiter/candidates/000000000000000000000000/bookmark' },
+  { method: 'DELETE', path: '/recruiter/candidates/000000000000000000000000/bookmark' },
+  { method: 'POST', path: '/recruiter/candidates/000000000000000000000000/contact' },
+  { method: 'GET', path: '/recruiter/messages' },
   { method: 'DELETE', path: '/account' }
 ];
 
@@ -40,6 +51,12 @@ const health = await request('/health');
 
 if (health.status !== 200) {
   throw new Error(`Expected /health to return 200, received ${health.status}`);
+}
+
+const ready = await request('/ready');
+
+if (ready.status !== 200) {
+  throw new Error(`Expected /ready to return 200, received ${ready.status}`);
 }
 
 for (const check of protectedChecks) {

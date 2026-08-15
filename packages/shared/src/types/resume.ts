@@ -1,4 +1,4 @@
-export type ResumeFileType = 'pdf' | 'doc' | 'docx';
+export type ResumeFileType = 'pdf';
 
 export type ResumeParsingStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'skipped';
 

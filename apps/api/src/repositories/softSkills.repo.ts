@@ -24,6 +24,10 @@ export function softSkillOutputsCollection(db: Db): Collection<SoftSkillOutputDo
   return db.collection<SoftSkillOutputDocument>(collections.softSkillOutputs);
 }
 
+export async function ensureSoftSkillIndexes(db: Db) {
+  await softSkillOutputsCollection(db).createIndex({ applicantId: 1 }, { unique: true });
+}
+
 export async function findSoftSkillsByApplicantId(db: Db, applicantId: ObjectId) {
   return softSkillOutputsCollection(db).findOne({ applicantId });
 }

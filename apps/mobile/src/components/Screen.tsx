@@ -1,5 +1,13 @@
 import type { PropsWithChildren, RefObject } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  View
+} from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing } from '../theme';
 
@@ -8,6 +16,7 @@ type ScreenProps = PropsWithChildren<{
   edgeToEdge?: boolean;
   fullBleed?: boolean;
   scrollBottomPadding?: number;
+  onScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
   scrollRef?: RefObject<ScrollView | null>;
   scroll?: boolean;
 }>;
@@ -17,6 +26,7 @@ export function Screen({
   children,
   edgeToEdge = false,
   fullBleed = false,
+  onScroll,
   scrollBottomPadding,
   scrollRef,
   scroll = false
@@ -40,7 +50,9 @@ export function Screen({
             ]}
             keyboardDismissMode="interactive"
             keyboardShouldPersistTaps="handled"
+            onScroll={onScroll}
             ref={scrollRef}
+            scrollEventThrottle={16}
           >
             {children}
           </ScrollView>

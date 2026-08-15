@@ -17,6 +17,8 @@ type MediaAsset = {
 export type ApplicantSignalDocument = {
   applicantId: ObjectId;
   promptId?: string;
+  promptFieldId?: string;
+  promptFieldLabel?: string;
   promptTextSnapshot?: string;
   tenSecondElaboration?: string;
   tenSecondElaborationSkipped?: boolean;
@@ -31,11 +33,24 @@ export function applicantSignalsCollection(db: Db): Collection<ApplicantSignalDo
   return db.collection<ApplicantSignalDocument>(collections.applicantSignals);
 }
 
+export async function ensureSignalIndexes(db: Db) {
+  await applicantSignalsCollection(db).createIndex({ applicantId: 1 }, { unique: true });
+}
+
 export async function findSignalByApplicantId(db: Db, applicantId: ObjectId) {
   return applicantSignalsCollection(db).findOne({ applicantId });
 }
 
-export async function selectSignalPrompt(db: Db, applicantId: ObjectId, promptId: string, promptText: string) {
+export async function selectSignalPrompt(
+  db: Db,
+  applicantId: ObjectId,
+  prompt: {
+    fieldId: string;
+    fieldLabel: string;
+    id: string;
+    text: string;
+  }
+) {
   const now = new Date();
 
   await applicantSignalsCollection(db).updateOne(
@@ -47,8 +62,10 @@ export async function selectSignalPrompt(db: Db, applicantId: ObjectId, promptId
         createdAt: now
       },
       $set: {
-        promptId,
-        promptTextSnapshot: promptText,
+        promptId: prompt.id,
+        promptFieldId: prompt.fieldId,
+        promptFieldLabel: prompt.fieldLabel,
+        promptTextSnapshot: prompt.text,
         updatedAt: now
       }
     },
@@ -222,6 +239,8 @@ function serializeMediaAsset(asset?: MediaAsset) {
 export function serializeSignal(signal: WithId<ApplicantSignalDocument>) {
   return {
     promptId: signal.promptId,
+    promptFieldId: signal.promptFieldId,
+    promptFieldLabel: signal.promptFieldLabel,
     promptTextSnapshot: signal.promptTextSnapshot,
     tenSecondElaboration: signal.tenSecondElaboration,
     tenSecondElaborationSkipped: Boolean(signal.tenSecondElaborationSkipped),

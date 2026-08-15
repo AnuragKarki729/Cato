@@ -2,7 +2,7 @@
 
 ## 1. Product Summary
 
-Cato is a mobile-first two-sided recruiting application. The POC is applicant-first and only includes applicant onboarding, a placeholder home screen, and profile/settings CRUD. Recruiter functionality is explicitly deferred.
+Cato is a mobile-first two-sided recruiting application. The POC is applicant-first, with a lightweight recruiter surface for demoing candidate discovery after applicant profiles are complete.
 
 The applicant experience centers on university eligibility, resume upload, short-form video responses, POC soft-skill signals, and a minimal academic/professional profile.
 
@@ -25,15 +25,24 @@ The applicant experience centers on university eligibility, resume upload, short
 - Profile/settings CRUD.
 - Account deletion.
 - MongoDB-backed applicant profile and onboarding data.
+- Recruiter email/Google auth using the same Supabase identity layer.
+- Recruiter dashboard, video feed, candidate detail, bookmarks, basic search, interest requests, messages log, and account deletion.
+- Recruiter interest request flow before messaging.
+- Applicant request inbox with accept/decline.
+- SSE-backed foreground notifications for interest request events.
+- MongoDB-backed notification records and seen/unseen counts.
+- Recruiter dashboard interest request status section.
+- WebSocket-backed recruiter message refresh for accepted-request messaging.
+- Single-role enforcement: one Supabase account can be either applicant or recruiter, not both.
 - Railway-hosted backend.
 
 ### Out of Scope
 
-- Recruiter accounts.
-- Recruiter authentication.
 - Job postings.
 - Matching.
-- Messaging.
+- Production-grade threaded messaging/conversations.
+- Recruiter company setup.
+- Recruiter subscription/billing.
 - Admin tooling.
 - Apple sign-in.
 - LinkedIn sign-in.
@@ -198,8 +207,6 @@ Applicant chooses one:
 Allowed file types:
 
 - PDF.
-- DOC.
-- DOCX.
 
 POC max file size:
 
@@ -488,7 +495,7 @@ type Resume = {
   cloudinaryPublicId: string;
   secureUrl: string;
   originalFileName: string;
-  fileType: 'pdf' | 'doc' | 'docx';
+  fileType: 'pdf';
   fileSizeBytes: number;
   softSkillGenerationStatus: 'pending' | 'processing' | 'completed' | 'failed' | 'skipped';
   uploadedAt?: Date;
@@ -711,8 +718,56 @@ Future scope:
 
 ### Recruiter Product
 
-- Future scope.
-- No recruiter-side data model or API is required in the POC.
+- Included only as a POC demo surface.
+- Current recruiter scope:
+  - recruiter account sync/auth,
+  - dashboard metrics,
+  - candidate list/search,
+  - TikTok-style short-take feed,
+  - candidate detail/preview,
+  - bookmarks,
+  - interest requests before messaging,
+  - request status tracking,
+  - dashboard request status summary,
+  - basic WebSocket-refreshed message logging after applicant acceptance,
+  - account deletion.
+- Production recruiter features are future scope:
+  - company profile setup,
+  - job/requisition context,
+  - matching,
+  - real threaded conversations,
+  - recruiter team seats,
+  - billing/subscriptions,
+  - audit logs and access controls.
+
+### Interest Requests And Messaging
+
+- Recruiters cannot directly message an applicant first.
+- Recruiter sends an interest request with a short reason.
+- Applicant sees the request in the Requests tab and can accept or decline after confirmation.
+- Messaging opens only after acceptance.
+- Interest request statuses:
+  - `sent`
+  - `viewed`
+  - `accepted`
+  - `declined`
+  - `expired`
+- Pending requests expire after 14 days.
+- Recruiters are limited to 25 pending requests and 20 sent requests per 24 hours.
+- Declined requests have a 14-day re-request cooldown.
+- Expired and declined requests require explicit re-request.
+- Accepted requests are terminal for the current POC.
+- Live foreground request updates use SSE.
+- Recruiter message refresh uses WebSocket.
+- Push notifications through FCM/APNs are deferred.
+
+### Notifications
+
+- In-app request notifications are persisted in MongoDB.
+- Notification records store recipient Supabase UUID, role, bucket, event name, payload, read timestamp, and created timestamp.
+- Mobile keeps a local AsyncStorage cache for instant badge updates.
+- Backend unread counts are the source of truth across sessions/devices.
+- Notification seen behavior is triggered when applicants open Requests or recruiters open Dashboard.
 
 ### Real AI Resume Parsing
 
@@ -740,6 +795,10 @@ The POC is complete when:
 - Complete users can access profile/settings CRUD.
 - Users who skipped the 30-second video see a finish-profile prompt from profile/settings.
 - Account deletion removes Supabase, MongoDB, Cloudinary, and soft-skill output.
+- Recruiter can sign up/sign in, browse completed candidates, search profiles, bookmark candidates, send a basic message, and delete their account.
+- Recruiter can send interest requests before messaging, view latest request statuses on the dashboard, and message only after applicant acceptance.
+- Applicant can review recruiter interest requests, accept/decline with confirmation, and unlock messaging by accepting.
+- In-app request notifications are stored in MongoDB, delivered live with SSE while foregrounded, and marked seen when the relevant screen is opened.
 
 ## 17. Implementation Milestones
 
@@ -815,7 +874,52 @@ The POC is complete when:
 
 No blocking open questions remain for the POC requirements based on the current confirmed scope.
 
-## 19. Agent Workflow Plan
+## 19. Decision Pivots
+
+### Resume Upload Format
+
+For the current POC, resume uploads accept PDF only.
+
+DOC and DOCX support is deferred because reliable server-side conversion adds deployment and preview complexity. The production path can revisit DOC/DOCX after PDF upload, preview, replacement, download, and deletion are stable.
+
+### Recruiter Media Access
+
+For the current POC, recruiter preview can use direct Cloudinary URLs for the short take, deeper signal, profile image, and resume PDF.
+
+Before production, recruiter media and resume access must move behind scoped access controls such as signed, temporary URLs or authenticated backend media endpoints. Recruiter list/feed responses should stay summary-first and avoid returning resume or deeper-signal URLs until a recruiter opens a specific candidate detail view.
+
+### Android Build Versioning
+
+Every Android bundle uploaded to Google Play must use a new `versionCode`.
+
+Before each Android Play upload, update both:
+
+- `apps/mobile/app.config.js` `android.versionCode`
+- `apps/mobile/android/app/build.gradle` `defaultConfig.versionCode`
+
+### Applicant Intent And Profile Strength
+
+Students looking for internships and students looking for full-time placement jobs must not compete in the same ranking pool. Applicant intent should be captured as a first-class profile/search dimension with at least:
+
+- `internship`
+- `full_time_placement`
+
+Recruiter discovery, filters, and ranking should respect this intent before comparing applicants.
+
+Profile strength must not depend heavily on internships because many students use Cato specifically to find their first internship.
+
+Profile strength weighting decision:
+
+- Resume, short take, deeper signal, and soft skills together account for 70%.
+- Projects account for 20% total:
+  - 1 project = 10%.
+  - 2 projects = 17%.
+  - 3+ projects = 20%.
+- Internships account for 10% total:
+  - 1+ internship = 10%.
+  - Additional internships do not increase this portion.
+
+## 20. Agent Workflow Plan
 
 Use sub-agents only for scoped work with clear ownership. The main Codex agent remains responsible for final integration, conflict resolution, and keeping this handoff accurate.
 
@@ -829,7 +933,7 @@ Use sub-agents only for scoped work with clear ownership. The main Codex agent r
 
 ### Goal
 
-Build the applicant-only Cato POC from this handoff using React Native for mobile and Fastify + TypeScript for backend.
+Build the Cato POC from this handoff using React Native for mobile and Fastify + TypeScript for backend. The POC includes applicant onboarding/profile creation and the lightweight recruiter discovery demo surface.
 
 ### Supervisor Agent
 

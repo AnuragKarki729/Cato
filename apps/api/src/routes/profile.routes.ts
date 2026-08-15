@@ -24,12 +24,34 @@ import { findResumeByApplicantId, serializeResume } from '../repositories/resume
 import { findSignalByApplicantId, serializeSignal } from '../repositories/signals.repo.js';
 import { findSoftSkillsByApplicantId, serializeSoftSkills, updateSoftSkillItems } from '../repositories/softSkills.repo.js';
 import {
+  countApplicantActivitiesByType,
+  findApplicantActivities,
+  serializeApplicantActivity
+} from '../repositories/applicantActivities.repo.js';
+import {
+  createApplicantProject,
+  deleteApplicantProject,
+  findProjectsByApplicantId,
+  serializeApplicantProject,
+  updateApplicantProject
+} from '../repositories/projects.repo.js';
+import {
+  expireStaleInterestRequests,
+  findApplicantInterestRequests,
+  markInterestRequestViewed,
+  recruiterAccountsCollection,
+  respondToInterestRequest,
+  serializeApplicantInterestRequest
+} from '../repositories/recruiters.repo.js';
+import { createAppNotification } from '../repositories/notifications.repo.js';
+import {
   assertCloudinaryProfileImageBelongsToUser,
   createSignedProfileImageUpload,
   deleteCloudinaryAsset
 } from '../services/cloudinary.service.js';
 import { isAtLeastOnboardingStatus } from '../services/onboarding.service.js';
 import { recalculateSoftSkillsFromSignal } from '../services/softSkillsScoring.service.js';
+import { attachSseClient, publishRecruiterEvent } from '../services/sse.service.js';
 
 const applicantUpdateSchema = z.object({
   name: z.string().trim().min(1)
@@ -59,6 +81,13 @@ const internshipSchema = z.object({
     'Customer Success',
     'Other'
   ])
+});
+
+const projectSchema = z.object({
+  title: z.string().trim().min(1).max(120),
+  type: z.enum(['built_project', 'research', 'thesis', 'video', 'writing', 'other']),
+  description: z.string().trim().min(1).max(800),
+  linkUrl: z.string().trim().url().max(500).optional().or(z.literal('').transform(() => undefined))
 });
 
 const educationSchema = z.object({
@@ -104,6 +133,14 @@ const profileImageSourceSchema = z.object({
   source: z.enum(['ten_second_video', 'thirty_second_video', 'uploaded'])
 });
 
+const interestRequestParamsSchema = z.object({
+  id: z.string().min(1)
+});
+
+const interestRequestResponseSchema = z.object({
+  action: z.enum(['accept', 'decline'])
+});
+
 async function getApplicantContext(request: FastifyRequest, reply: FastifyReply) {
   const user = request.user;
 
@@ -123,6 +160,123 @@ async function getApplicantContext(request: FastifyRequest, reply: FastifyReply)
 }
 
 export async function profileRoutes(app: FastifyInstance) {
+  app.get('/applicant/events', { preHandler: requireSupabaseUser }, async (request, reply) => {
+    const context = await getApplicantContext(request, reply);
+
+    if (!context) {
+      return;
+    }
+
+    attachSseClient(reply, context.user.id, 'applicant');
+  });
+
+  app.get('/applicant/interest-requests', { preHandler: requireSupabaseUser }, async (request, reply) => {
+    const context = await getApplicantContext(request, reply);
+
+    if (!context) {
+      return;
+    }
+
+    await expireStaleInterestRequests(context.db);
+    const interestRequests = await findApplicantInterestRequests(context.db, context.applicant._id);
+    await Promise.all(
+      interestRequests
+        .filter((interestRequest) => interestRequest.status === 'sent')
+        .map((interestRequest) => markInterestRequestViewed(context.db, interestRequest._id))
+    );
+
+    const serialized = await Promise.all(
+      interestRequests.map(async (interestRequest) => {
+        const recruiter = await recruiterAccountsCollection(context.db).findOne({ _id: interestRequest.recruiterId });
+        return serializeApplicantInterestRequest(
+          {
+            ...interestRequest,
+            status: interestRequest.status === 'sent' ? 'viewed' : interestRequest.status,
+            viewedAt: interestRequest.viewedAt ?? (interestRequest.status === 'sent' ? new Date() : undefined)
+          },
+          recruiter
+        );
+      })
+    );
+
+    return { requests: serialized };
+  });
+
+  app.get('/applicant/activity', { preHandler: requireSupabaseUser }, async (request, reply) => {
+    const context = await getApplicantContext(request, reply);
+
+    if (!context) {
+      return;
+    }
+
+    const [recent, profileViews, resumeOpens, bookmarks, shortlists] = await Promise.all([
+      findApplicantActivities(context.db, context.applicant._id, 8),
+      countApplicantActivitiesByType(context.db, context.applicant._id, 'profile_viewed'),
+      countApplicantActivitiesByType(context.db, context.applicant._id, 'resume_opened'),
+      countApplicantActivitiesByType(context.db, context.applicant._id, 'bookmarked'),
+      countApplicantActivitiesByType(context.db, context.applicant._id, 'shortlisted')
+    ]);
+
+    return {
+      metrics: {
+        profileViews,
+        resumeOpens,
+        bookmarks,
+        shortlists
+      },
+      recent: recent.map(serializeApplicantActivity)
+    };
+  });
+
+  app.post('/applicant/interest-requests/:id/respond', { preHandler: requireSupabaseUser }, async (request, reply) => {
+    const params = interestRequestParamsSchema.safeParse(request.params);
+    const parsed = interestRequestResponseSchema.safeParse(request.body);
+
+    if (!params.success || !ObjectId.isValid(params.data.id) || !parsed.success) {
+      return reply.code(400).send({ error: 'Invalid interest request response' });
+    }
+
+    const context = await getApplicantContext(request, reply);
+
+    if (!context) {
+      return;
+    }
+
+    const interestRequest = await respondToInterestRequest(
+      context.db,
+      new ObjectId(params.data.id),
+      context.applicant._id,
+      parsed.data.action
+    );
+
+    if (!interestRequest) {
+      return reply.code(404).send({ error: 'Interest request not found' });
+    }
+
+    const recruiter = await recruiterAccountsCollection(context.db).findOne({ _id: interestRequest.recruiterId });
+    if (recruiter) {
+      const notificationPayload = {
+        requestId: interestRequest._id.toString(),
+        applicantId: context.applicant._id.toString(),
+        applicantName: context.applicant.name,
+        status: interestRequest.status,
+        respondedAt: interestRequest.respondedAt?.toISOString()
+      };
+      await createAppNotification(context.db, {
+        recipientSupabaseUserId: recruiter.supabaseUserId,
+        role: 'recruiter',
+        bucket: 'requests',
+        eventName: 'interest_request_responded',
+        payload: notificationPayload
+      });
+      publishRecruiterEvent(recruiter.supabaseUserId, 'interest_request_responded', notificationPayload);
+    }
+
+    return {
+      request: serializeApplicantInterestRequest(interestRequest, recruiter)
+    };
+  });
+
   app.get('/profile', { preHandler: requireSupabaseUser }, async (request, reply) => {
     const context = await getApplicantContext(request, reply);
 
@@ -130,9 +284,10 @@ export async function profileRoutes(app: FastifyInstance) {
       return;
     }
 
-    const [education, internships, resume, signal, existingSoftSkills] = await Promise.all([
+    const [education, internships, projects, resume, signal, existingSoftSkills] = await Promise.all([
       findEducationProfileByApplicantId(context.db, context.applicant._id),
       findInternshipsByApplicantId(context.db, context.applicant._id),
+      findProjectsByApplicantId(context.db, context.applicant._id),
       findResumeByApplicantId(context.db, context.applicant._id),
       findSignalByApplicantId(context.db, context.applicant._id),
       findSoftSkillsByApplicantId(context.db, context.applicant._id)
@@ -146,6 +301,7 @@ export async function profileRoutes(app: FastifyInstance) {
       applicant: serializeApplicant(context.applicant),
       education: education ? serializeEducationProfile(education) : null,
       internships: internships.map(serializeInternship),
+      projects: projects.map(serializeApplicantProject),
       resume: resume ? serializeResume(resume) : null,
       signal: signal ? serializeSignal(signal) : null,
       softSkills: softSkills ? serializeSoftSkills(softSkills) : null,
@@ -367,6 +523,72 @@ export async function profileRoutes(app: FastifyInstance) {
     }
 
     await deleteInternship(context.db, context.applicant._id, new ObjectId(params.data.id));
+
+    return {
+      deleted: true
+    };
+  });
+
+  app.post('/profile/projects', { preHandler: requireSupabaseUser }, async (request, reply) => {
+    const parsed = projectSchema.safeParse(request.body);
+
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'Invalid project payload', issues: parsed.error.issues });
+    }
+
+    const context = await getApplicantContext(request, reply);
+
+    if (!context) {
+      return;
+    }
+
+    const project = await createApplicantProject(context.db, context.applicant._id, parsed.data);
+
+    return {
+      project: serializeApplicantProject(project)
+    };
+  });
+
+  app.patch('/profile/projects/:id', { preHandler: requireSupabaseUser }, async (request, reply) => {
+    const parsed = projectSchema.safeParse(request.body);
+    const params = z.object({ id: z.string().min(1) }).safeParse(request.params);
+
+    if (!parsed.success || !params.success || !ObjectId.isValid(params.data.id)) {
+      return reply.code(400).send({ error: 'Invalid project update payload' });
+    }
+
+    const context = await getApplicantContext(request, reply);
+
+    if (!context) {
+      return;
+    }
+
+    const project = await updateApplicantProject(
+      context.db,
+      context.applicant._id,
+      new ObjectId(params.data.id),
+      parsed.data
+    );
+
+    return {
+      project: serializeApplicantProject(project)
+    };
+  });
+
+  app.delete('/profile/projects/:id', { preHandler: requireSupabaseUser }, async (request, reply) => {
+    const params = z.object({ id: z.string().min(1) }).safeParse(request.params);
+
+    if (!params.success || !ObjectId.isValid(params.data.id)) {
+      return reply.code(400).send({ error: 'Invalid project id' });
+    }
+
+    const context = await getApplicantContext(request, reply);
+
+    if (!context) {
+      return;
+    }
+
+    await deleteApplicantProject(context.db, context.applicant._id, new ObjectId(params.data.id));
 
     return {
       deleted: true

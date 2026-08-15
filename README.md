@@ -1,12 +1,12 @@
 # Cato
 
-Cato is a mobile-first applicant onboarding POC for university students. The current scope is applicant onboarding, placeholder home, profile/settings CRUD, Cloudinary media storage, MongoDB profile data, Supabase Google auth, and dummy randomized soft-skill output.
+Cato is a mobile-first two-sided recruiting POC for university students and recruiters. The current scope is applicant onboarding/profile creation plus a lightweight recruiter demo surface for candidate discovery.
 
 See [handoff.md](./handoff.md) for the source of truth.
 
 ## Current Status
 
-This repository is a local POC scaffold with the applicant onboarding and settings surfaces implemented.
+This repository is a local POC scaffold with applicant onboarding/settings and recruiter discovery surfaces implemented.
 
 Implemented so far:
 
@@ -60,6 +60,10 @@ Implemented so far:
 - Resume and video consent timestamps are stored on the applicant record and enforced by media upload endpoints.
 - Mobile onboarding and profile/settings media actions include POC consent acknowledgement before resume upload or video recording.
 - Mobile privacy policy placeholder is available from sign-in, media consent screens, and profile/settings.
+- Recruiter auth/account sync with single-role enforcement.
+- Recruiter dashboard, search/results, TikTok-style candidate feed, candidate detail, bookmarks, basic message logging, and account deletion.
+- MongoDB index creation at API startup.
+- API `/ready` readiness check with MongoDB ping.
 
 ## POC Scope
 
@@ -75,15 +79,26 @@ In scope:
 - Placeholder home.
 - Profile/settings CRUD.
 - Account deletion.
+- Lightweight recruiter POC:
+  - recruiter sign-up/sign-in,
+  - dashboard metrics,
+  - candidate search/results,
+  - short-take video feed,
+  - bookmarks,
+  - basic message logging,
+  - recruiter account deletion.
 
 Out of scope:
 
-- Recruiters.
 - Apple sign-in.
 - LinkedIn sign-in.
 - Redis.
 - Real AI/Gemini parsing.
 - App Store/TestFlight readiness.
+- Job postings and matching.
+- Production recruiter conversations.
+- Recruiter company setup, team seats, and billing.
+- Production media access controls; direct Cloudinary URLs are POC-only.
 
 ## Environment
 
@@ -97,6 +112,8 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY
 EXPO_PUBLIC_API_BASE_URL
 ```
 
+Local simulator/device development should point `EXPO_PUBLIC_API_BASE_URL` at the backend running on your machine, for example `http://192.168.1.99:4000`. EAS build profiles in `apps/mobile/eas.json` should keep using the deployed Railway API.
+
 Backend-only secrets must never be exposed to the mobile app:
 
 ```text
@@ -107,14 +124,14 @@ MONGODB_URL
 
 ## Runtime
 
-Use Node 20 for local development.
+Use Node 22 for local development and Railway.
 
 ```sh
 nvm use
 npm install
 ```
 
-The current shell used for scaffolding had Node 22, which can trigger an Expo SDK 51 CLI free-port issue during `expo start`.
+The repo targets Expo SDK 54 and backend runtime support that expects modern Node behavior.
 
 ## Structure
 
@@ -144,6 +161,7 @@ API health check:
 
 ```sh
 curl http://127.0.0.1:4000/health
+curl http://127.0.0.1:4000/ready
 ```
 
 Protected auth route smoke checks:
@@ -160,8 +178,10 @@ curl -i -X POST http://127.0.0.1:4000/onboarding/resume/skip
 curl -i http://127.0.0.1:4000/profile/soft-skills
 curl -i http://127.0.0.1:4000/signal
 curl -i -X POST http://127.0.0.1:4000/onboarding/signal-prompt
-curl -i -X POST http://127.0.0.1:4000/videos/10-second
-curl -i -X POST http://127.0.0.1:4000/videos/30-second
+curl -i -X POST http://127.0.0.1:4000/videos/10-second/upload-url
+curl -i -X POST http://127.0.0.1:4000/videos/10-second/complete
+curl -i -X POST http://127.0.0.1:4000/videos/30-second/upload-url
+curl -i -X POST http://127.0.0.1:4000/videos/30-second/complete
 curl -i http://127.0.0.1:4000/videos
 curl -i -X DELETE http://127.0.0.1:4000/videos/10-second
 curl -i -X DELETE http://127.0.0.1:4000/videos/30-second
@@ -170,6 +190,12 @@ curl -i http://127.0.0.1:4000/profile
 curl -i -X POST http://127.0.0.1:4000/onboarding/profile
 curl -i -X POST http://127.0.0.1:4000/profile/internships
 curl -i -X PATCH http://127.0.0.1:4000/profile/soft-skills
+curl -i -X POST http://127.0.0.1:4000/recruiter/auth/sync
+curl -i http://127.0.0.1:4000/recruiter/me
+curl -i http://127.0.0.1:4000/recruiter/dashboard
+curl -i "http://127.0.0.1:4000/recruiter/candidates?q=engineering"
+curl -i http://127.0.0.1:4000/recruiter/bookmarks
+curl -i http://127.0.0.1:4000/recruiter/messages
 curl -i -X DELETE http://127.0.0.1:4000/account
 ```
 
@@ -284,3 +310,16 @@ CLOUDINARY_API_KEY
 CLOUDINARY_API_SECRET
 CLOUDINARY_URL
 ```
+
+## Android Build Checklist
+
+Before every Google Play upload:
+
+- Confirm `EXPO_PUBLIC_API_BASE_URL` points to the deployed Railway API, not a local IP.
+- Increment Android `versionCode` in both:
+  - `apps/mobile/app.config.js`
+  - `apps/mobile/android/app/build.gradle`
+- Run `npm run typecheck -w @cato/mobile`.
+- Run `npm run typecheck -w @cato/api`.
+- Run `npm run build -w @cato/api`.
+- Run `API_BASE_URL=https://cato-api.up.railway.app npm run smoke:api`.

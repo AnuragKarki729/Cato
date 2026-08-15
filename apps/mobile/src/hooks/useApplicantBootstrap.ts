@@ -9,6 +9,7 @@ type ApplicantBootstrapState = {
 };
 
 export function useApplicantBootstrap(accessToken?: string): ApplicantBootstrapState {
+  const [retryVersion, setRetryVersion] = useState(0);
   const [state, setState] = useState<ApplicantBootstrapState>({
     applicant: null,
     error: null,
@@ -27,6 +28,12 @@ export function useApplicantBootstrap(accessToken?: string): ApplicantBootstrapS
 
     const token = accessToken;
     let isMounted = true;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+
+    setState((current) => ({
+      ...current,
+      isLoading: !current.applicant && !current.error
+    }));
 
     async function bootstrapApplicant() {
       try {
@@ -63,6 +70,11 @@ export function useApplicantBootstrap(accessToken?: string): ApplicantBootstrapS
             error: error instanceof Error ? error : new Error('Applicant bootstrap failed'),
             isLoading: false
           });
+          retryTimer = setTimeout(() => {
+            if (isMounted) {
+              setRetryVersion((version) => version + 1);
+            }
+          }, 2500);
         }
       }
     }
@@ -71,8 +83,11 @@ export function useApplicantBootstrap(accessToken?: string): ApplicantBootstrapS
 
     return () => {
       isMounted = false;
+      if (retryTimer) {
+        clearTimeout(retryTimer);
+      }
     };
-  }, [accessToken]);
+  }, [accessToken, retryVersion]);
 
   return state;
 }

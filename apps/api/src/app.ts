@@ -2,11 +2,14 @@ import cors from '@fastify/cors';
 import websocket from '@fastify/websocket';
 import Fastify from 'fastify';
 import { env } from './config/env.js';
+import { ensureDatabaseIndexes } from './db/indexes.js';
+import { getDatabase } from './db/mongo.js';
 import { accountRoutes } from './routes/account.routes.js';
 import { authRoutes } from './routes/auth.routes.js';
 import { healthRoutes } from './routes/health.routes.js';
 import { meRoutes } from './routes/me.routes.js';
 import { onboardingRoutes } from './routes/onboarding.routes.js';
+import { notificationsRoutes } from './routes/notifications.routes.js';
 import { privacyRoutes } from './routes/privacy.routes.js';
 import { promptsRoutes } from './routes/prompts.routes.js';
 import { profileRoutes } from './routes/profile.routes.js';
@@ -17,6 +20,9 @@ import { softSkillsRoutes } from './routes/softSkills.routes.js';
 import { universitiesRoutes } from './routes/universities.routes.js';
 
 export async function buildApp() {
+  const db = await getDatabase();
+  await ensureDatabaseIndexes(db);
+
   const app = Fastify({
     logger: env.NODE_ENV !== 'test'
   });
@@ -30,6 +36,7 @@ export async function buildApp() {
   await app.register(authRoutes);
   await app.register(meRoutes);
   await app.register(onboardingRoutes);
+  await app.register(notificationsRoutes);
   await app.register(universitiesRoutes);
   await app.register(privacyRoutes);
   await app.register(promptsRoutes);

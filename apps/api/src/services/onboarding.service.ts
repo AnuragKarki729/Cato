@@ -17,8 +17,8 @@ const routeByStatus: Record<OnboardingStatus, string> = {
   signal_prompt_selected: '/(onboarding)/signal-video',
   signal_video_uploaded: '/(onboarding)/deeper-signal',
   deeper_signal_seen: '/(onboarding)/deeper-video',
-  deeper_video_skipped: '/(onboarding)/profile-form',
-  deeper_video_uploaded: '/(onboarding)/profile-form',
+  deeper_video_skipped: '/(onboarding)/soft-skills',
+  deeper_video_uploaded: '/(onboarding)/soft-skills',
   profile_form_complete: '/(tabs)/home',
   onboarding_complete: '/(tabs)/home'
 };

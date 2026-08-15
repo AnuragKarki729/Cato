@@ -1,4 +1,5 @@
 export * from './constants/onboardingStatus';
+export * from './constants/academicFields';
 export * from './constants/prompts';
 export * from './constants/roleDepartments';
 export * from './constants/semesters';
@@ -6,6 +7,7 @@ export * from './types/applicant';
 export * from './types/authRole';
 export * from './types/education';
 export * from './types/onboarding';
+export * from './types/notifications';
 export * from './types/profile';
 export * from './types/recruiter';
 export * from './types/prompts';

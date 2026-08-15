@@ -15,6 +15,8 @@ export type MediaAsset = {
 
 export type ApplicantSignal = {
   promptId?: string;
+  promptFieldId?: string;
+  promptFieldLabel?: string;
   promptTextSnapshot?: string;
   tenSecondElaboration?: string;
   tenSecondElaborationSkipped: boolean;
@@ -25,6 +27,7 @@ export type ApplicantSignal = {
 };
 
 export type SelectSignalPromptRequest = {
+  promptFieldId?: string;
   promptId: string;
 };
 

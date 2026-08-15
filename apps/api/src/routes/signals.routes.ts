@@ -183,8 +183,7 @@ export async function signalsRoutes(app: FastifyInstance) {
     const signal = await selectSignalPrompt(
       context.db,
       context.applicant._id,
-      prompt.id,
-      prompt.text
+      prompt
     );
 
     await updateApplicantOnboardingStatus(context.db, context.user.id, 'signal_prompt_selected');
@@ -249,8 +248,11 @@ export async function signalsRoutes(app: FastifyInstance) {
 
     const videoKey = toSignalVideoKey(params.data.type);
     const existingSignal = await findSignalByApplicantId(context.db, context.applicant._id);
+    const existingVideo = existingSignal?.[videoKey];
 
-    await deleteStoredVideoAsset(existingSignal?.[videoKey]);
+    if (existingVideo?.cloudinaryPublicId && existingVideo.cloudinaryPublicId !== parsed.data.cloudinaryPublicId) {
+      await deleteStoredVideoAsset(existingVideo);
+    }
 
     const signal = await saveSignalVideo(context.db, context.applicant._id, videoKey, {
       storageProvider: 'cloudinary',

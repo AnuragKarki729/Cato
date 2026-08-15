@@ -6,7 +6,9 @@ export type EducationProfile = {
   semesterNumber: number;
   gpa?: number;
   major?: string;
+  majorFieldIds?: string[];
   minor?: string;
+  minorFieldIds?: string[];
   updatedAt: string;
 };
 

@@ -7,6 +7,8 @@ export const semesters = [
   { label: 'Junior / Semester 6', value: 6 },
   { label: 'Senior / Semester 7', value: 7 },
   { label: 'Senior / Semester 8', value: 8 },
-  { label: 'Graduate / Semester 9+', value: 9 },
-  { label: 'Graduating this semester', value: 99 }
+  { label: 'Year 5+ / Extended undergrad', value: 9 },
+  { label: 'Graduate student', value: 10 },
+  { label: 'Graduating this semester', value: 99 },
+  { label: 'Graduated', value: 100 }
 ] as const;

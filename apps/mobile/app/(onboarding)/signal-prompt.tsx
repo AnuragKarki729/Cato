@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import type { SignalPrompt } from '@cato/shared';
+import type { SignalPrompt, SignalPromptsResponse } from '@cato/shared';
 import { getSignalPrompts } from '../../src/api/onboarding';
 import { selectSignalPrompt } from '../../src/api/signal';
 import { Screen } from '../../src/components/Screen';
@@ -14,6 +14,8 @@ export default function SignalPromptScreen() {
   const { session } = useSession();
   const [error, setError] = useState<string | null>(null);
   const [prompts, setPrompts] = useState<SignalPrompt[]>([]);
+  const [categories, setCategories] = useState<SignalPromptsResponse['categories']>([]);
+  const [selectedFieldId, setSelectedFieldId] = useState('general');
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const slide = useRef(new Animated.Value(0)).current;
@@ -58,10 +60,13 @@ export default function SignalPromptScreen() {
       return;
     }
 
-    getSignalPrompts(session.access_token).then((result) => {
+    getSignalPrompts(session.access_token, selectedFieldId).then((result) => {
+      setCategories(result.categories);
       setPrompts(result.prompts);
+      setActiveIndex(0);
+      setSelectedPromptId(result.prompts[0]?.id ?? null);
     });
-  }, [session]);
+  }, [selectedFieldId, session]);
 
   function moveCarousel(direction: 1 | -1) {
     if (visiblePrompts.length === 0) {
@@ -96,6 +101,7 @@ export default function SignalPromptScreen() {
 
     try {
       const result = await selectSignalPrompt(session.access_token, {
+        promptFieldId: prompt.fieldId,
         promptId: prompt.id
       });
       setSelectedPromptId(prompt.id);
@@ -116,6 +122,19 @@ export default function SignalPromptScreen() {
       <Text style={styles.body}>
         Record a quick 10-second take that captures what drives you to show up, create change, and inspire.
       </Text>
+      <View style={styles.categoryRow}>
+        {categories.map((category) => (
+          <Pressable
+            key={category.fieldId}
+            onPress={() => setSelectedFieldId(category.fieldId)}
+            style={[styles.categoryChip, selectedFieldId === category.fieldId ? styles.categoryChipActive : null]}
+          >
+            <Text style={[styles.categoryChipText, selectedFieldId === category.fieldId ? styles.categoryChipTextActive : null]}>
+              {category.label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
       <View style={styles.carouselShell}>
         {previousPrompt && visiblePrompts.length > 1 ? (
           <View pointerEvents="none" style={[styles.previewCard, styles.leftPreview]}>
@@ -201,6 +220,33 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     color: colors.muted,
     ...typography.body
+  },
+  categoryRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.xl
+  },
+  categoryChip: {
+    minHeight: controls.chipHeight,
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 999,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md
+  },
+  categoryChipActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary
+  },
+  categoryChipText: {
+    color: colors.text,
+    ...typography.meta
+  },
+  categoryChipTextActive: {
+    color: colors.primaryText
   },
   carouselShell: {
     alignItems: 'center',
