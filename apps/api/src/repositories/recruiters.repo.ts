@@ -32,7 +32,10 @@ export type RecruiterCandidateReviewDocument = {
 export type RecruiterMessageDocument = {
   recruiterId: ObjectId;
   applicantId: ObjectId;
+  senderRole?: 'recruiter' | 'applicant';
   body: string;
+  readByApplicantAt?: Date;
+  readByRecruiterAt?: Date;
   createdAt: Date;
 };
 
@@ -43,6 +46,11 @@ export type RecruiterInterestRequestDocument = {
   applicantId: ObjectId;
   reason: string;
   roleCategory?: string;
+  sourceType?: 'profile' | 'video' | 'search' | 'match_proposal';
+  sourceVideoId?: ObjectId;
+  sourceProjectId?: ObjectId;
+  sourceInternshipId?: ObjectId;
+  sourceAccomplishmentId?: ObjectId;
   status: RecruiterInterestRequestStatus;
   sentAt: Date;
   viewedAt?: Date;
@@ -95,9 +103,12 @@ export async function ensureRecruiterIndexes(db: Db) {
     recruiterInterestRequestsCollection(db).createIndex({ recruiterId: 1, applicantId: 1 }, { unique: true }),
     recruiterInterestRequestsCollection(db).createIndex({ recruiterId: 1, status: 1, updatedAt: -1 }),
     recruiterInterestRequestsCollection(db).createIndex({ applicantId: 1, status: 1, updatedAt: -1 }),
+    recruiterInterestRequestsCollection(db).createIndex({ sourceType: 1, sourceVideoId: 1 }),
     recruiterInterestRequestsCollection(db).createIndex({ expiresAt: 1 }),
     recruiterMessagesCollection(db).createIndex({ recruiterId: 1, createdAt: -1 }),
-    recruiterMessagesCollection(db).createIndex({ applicantId: 1, createdAt: -1 })
+    recruiterMessagesCollection(db).createIndex({ applicantId: 1, createdAt: -1 }),
+    recruiterMessagesCollection(db).createIndex({ recruiterId: 1, senderRole: 1, readByRecruiterAt: 1 }),
+    recruiterMessagesCollection(db).createIndex({ applicantId: 1, senderRole: 1, readByApplicantAt: 1 })
   ]);
 }
 
@@ -225,6 +236,11 @@ export async function upsertRecruiterInterestRequest(
     reason: string;
     resend?: boolean;
     roleCategory?: string;
+    sourceType?: 'profile' | 'video' | 'search' | 'match_proposal';
+    sourceVideoId?: ObjectId;
+    sourceProjectId?: ObjectId;
+    sourceInternshipId?: ObjectId;
+    sourceAccomplishmentId?: ObjectId;
   }
 ) {
   const now = new Date();
@@ -240,6 +256,11 @@ export async function upsertRecruiterInterestRequest(
       $set: {
         reason: input.reason,
         ...(input.roleCategory ? { roleCategory: input.roleCategory } : {}),
+        ...(input.sourceType ? { sourceType: input.sourceType } : {}),
+        ...(input.sourceVideoId ? { sourceVideoId: input.sourceVideoId } : {}),
+        ...(input.sourceProjectId ? { sourceProjectId: input.sourceProjectId } : {}),
+        ...(input.sourceInternshipId ? { sourceInternshipId: input.sourceInternshipId } : {}),
+        ...(input.sourceAccomplishmentId ? { sourceAccomplishmentId: input.sourceAccomplishmentId } : {}),
         status: 'sent',
         sentAt: now,
         expiresAt,
@@ -247,7 +268,12 @@ export async function upsertRecruiterInterestRequest(
       },
       $unset: {
         viewedAt: '',
-        respondedAt: ''
+        respondedAt: '',
+        ...(input.sourceType ? {} : { sourceType: '' }),
+        ...(input.sourceVideoId ? {} : { sourceVideoId: '' }),
+        ...(input.sourceProjectId ? {} : { sourceProjectId: '' }),
+        ...(input.sourceInternshipId ? {} : { sourceInternshipId: '' }),
+        ...(input.sourceAccomplishmentId ? {} : { sourceAccomplishmentId: '' })
       }
     },
     { upsert: true }
@@ -371,6 +397,17 @@ export async function createRecruiterMessage(db: Db, recruiterId: ObjectId, appl
   await recruiterMessagesCollection(db).insertOne({
     recruiterId,
     applicantId,
+    senderRole: 'recruiter',
+    body,
+    createdAt: new Date()
+  });
+}
+
+export async function createApplicantMessage(db: Db, recruiterId: ObjectId, applicantId: ObjectId, body: string) {
+  await recruiterMessagesCollection(db).insertOne({
+    recruiterId,
+    applicantId,
+    senderRole: 'applicant',
     body,
     createdAt: new Date()
   });
@@ -380,8 +417,61 @@ export async function findRecruiterMessages(db: Db, recruiterId: ObjectId) {
   return recruiterMessagesCollection(db).find({ recruiterId }).sort({ createdAt: -1 }).toArray();
 }
 
+export async function findConversationMessages(db: Db, recruiterId: ObjectId, applicantId: ObjectId) {
+  return recruiterMessagesCollection(db).find({ recruiterId, applicantId }).sort({ createdAt: 1 }).toArray();
+}
+
 export async function countRecruiterMessages(db: Db, recruiterId: ObjectId) {
   return recruiterMessagesCollection(db).countDocuments({ recruiterId });
+}
+
+export async function countUnreadRecruiterMessages(db: Db, recruiterId: ObjectId) {
+  return recruiterMessagesCollection(db).countDocuments({
+    recruiterId,
+    senderRole: 'applicant',
+    readByRecruiterAt: { $exists: false }
+  });
+}
+
+export async function countUnreadApplicantMessages(db: Db, applicantId: ObjectId, recruiterId?: ObjectId) {
+  return recruiterMessagesCollection(db).countDocuments({
+    applicantId,
+    ...(recruiterId ? { recruiterId } : {}),
+    $or: [{ senderRole: 'recruiter' }, { senderRole: { $exists: false } }],
+    readByApplicantAt: { $exists: false }
+  });
+}
+
+export async function markApplicantConversationRead(db: Db, recruiterId: ObjectId, applicantId: ObjectId) {
+  await recruiterMessagesCollection(db).updateMany(
+    {
+      recruiterId,
+      applicantId,
+      $or: [{ senderRole: 'recruiter' }, { senderRole: { $exists: false } }],
+      readByApplicantAt: { $exists: false }
+    },
+    {
+      $set: {
+        readByApplicantAt: new Date()
+      }
+    }
+  );
+}
+
+export async function markRecruiterConversationRead(db: Db, recruiterId: ObjectId, applicantId: ObjectId) {
+  await recruiterMessagesCollection(db).updateMany(
+    {
+      recruiterId,
+      applicantId,
+      senderRole: 'applicant',
+      readByRecruiterAt: { $exists: false }
+    },
+    {
+      $set: {
+        readByRecruiterAt: new Date()
+      }
+    }
+  );
 }
 
 export function serializeRecruiterInterestRequest(
@@ -395,6 +485,11 @@ export function serializeRecruiterInterestRequest(
     candidateName,
     reason: request.reason,
     roleCategory: request.roleCategory,
+    sourceType: request.sourceType,
+    sourceVideoId: request.sourceVideoId?.toString(),
+    sourceProjectId: request.sourceProjectId?.toString(),
+    sourceInternshipId: request.sourceInternshipId?.toString(),
+    sourceAccomplishmentId: request.sourceAccomplishmentId?.toString(),
     status: request.status,
     sentAt: request.sentAt.toISOString(),
     viewedAt: request.viewedAt?.toISOString(),
@@ -429,6 +524,11 @@ export function serializeApplicantInterestRequest(
     companyName: recruiter?.companyName,
     reason: request.reason,
     roleCategory: request.roleCategory,
+    sourceType: request.sourceType,
+    sourceVideoId: request.sourceVideoId?.toString(),
+    sourceProjectId: request.sourceProjectId?.toString(),
+    sourceInternshipId: request.sourceInternshipId?.toString(),
+    sourceAccomplishmentId: request.sourceAccomplishmentId?.toString(),
     status: request.status,
     sentAt: request.sentAt.toISOString(),
     viewedAt: request.viewedAt?.toISOString(),

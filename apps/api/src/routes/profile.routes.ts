@@ -36,8 +36,13 @@ import {
   updateApplicantProject
 } from '../repositories/projects.repo.js';
 import {
+  countUnreadApplicantMessages,
+  createApplicantMessage,
   expireStaleInterestRequests,
+  findConversationMessages,
+  findInterestRequestById,
   findApplicantInterestRequests,
+  markApplicantConversationRead,
   markInterestRequestViewed,
   recruiterAccountsCollection,
   respondToInterestRequest,
@@ -141,6 +146,10 @@ const interestRequestResponseSchema = z.object({
   action: z.enum(['accept', 'decline'])
 });
 
+const applicantMessageSchema = z.object({
+  body: z.string().trim().min(1).max(1200)
+});
+
 async function getApplicantContext(request: FastifyRequest, reply: FastifyReply) {
   const user = request.user;
 
@@ -188,14 +197,18 @@ export async function profileRoutes(app: FastifyInstance) {
     const serialized = await Promise.all(
       interestRequests.map(async (interestRequest) => {
         const recruiter = await recruiterAccountsCollection(context.db).findOne({ _id: interestRequest.recruiterId });
-        return serializeApplicantInterestRequest(
-          {
-            ...interestRequest,
-            status: interestRequest.status === 'sent' ? 'viewed' : interestRequest.status,
-            viewedAt: interestRequest.viewedAt ?? (interestRequest.status === 'sent' ? new Date() : undefined)
-          },
-          recruiter
-        );
+        const unreadMessageCount = await countUnreadApplicantMessages(context.db, context.applicant._id, interestRequest.recruiterId);
+        return {
+          ...serializeApplicantInterestRequest(
+            {
+              ...interestRequest,
+              status: interestRequest.status === 'sent' ? 'viewed' : interestRequest.status,
+              viewedAt: interestRequest.viewedAt ?? (interestRequest.status === 'sent' ? new Date() : undefined)
+            },
+            recruiter
+          ),
+          unreadMessageCount
+        };
       })
     );
 
@@ -275,6 +288,92 @@ export async function profileRoutes(app: FastifyInstance) {
     return {
       request: serializeApplicantInterestRequest(interestRequest, recruiter)
     };
+  });
+
+  app.get('/applicant/interest-requests/:id/messages', { preHandler: requireSupabaseUser }, async (request, reply) => {
+    const params = interestRequestParamsSchema.safeParse(request.params);
+
+    if (!params.success || !ObjectId.isValid(params.data.id)) {
+      return reply.code(400).send({ error: 'Invalid interest request id' });
+    }
+
+    const context = await getApplicantContext(request, reply);
+
+    if (!context) {
+      return;
+    }
+
+    const interestRequest = await findInterestRequestById(context.db, new ObjectId(params.data.id));
+
+    if (!interestRequest || !interestRequest.applicantId.equals(context.applicant._id)) {
+      return reply.code(404).send({ error: 'Interest request not found' });
+    }
+
+    if (interestRequest.status !== 'accepted') {
+      return reply.code(409).send({ error: 'Accept the interest request before messaging opens' });
+    }
+
+    const messages = await findConversationMessages(context.db, interestRequest.recruiterId, context.applicant._id);
+    await markApplicantConversationRead(context.db, interestRequest.recruiterId, context.applicant._id);
+
+    return {
+      messages: messages.map((message) => ({
+        id: message._id.toString(),
+        requestId: interestRequest._id.toString(),
+        recruiterId: message.recruiterId.toString(),
+        applicantId: message.applicantId.toString(),
+        senderRole: message.senderRole ?? 'recruiter',
+        isUnreadForViewer:
+          (message.senderRole === 'recruiter' || !message.senderRole) &&
+          !message.readByApplicantAt,
+        body: message.body,
+        createdAt: message.createdAt.toISOString()
+      }))
+    };
+  });
+
+  app.post('/applicant/interest-requests/:id/messages', { preHandler: requireSupabaseUser }, async (request, reply) => {
+    const params = interestRequestParamsSchema.safeParse(request.params);
+    const parsed = applicantMessageSchema.safeParse(request.body);
+
+    if (!params.success || !ObjectId.isValid(params.data.id)) {
+      return reply.code(400).send({ error: 'Invalid interest request id' });
+    }
+
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'Invalid message payload' });
+    }
+
+    const context = await getApplicantContext(request, reply);
+
+    if (!context) {
+      return;
+    }
+
+    const interestRequest = await findInterestRequestById(context.db, new ObjectId(params.data.id));
+
+    if (!interestRequest || !interestRequest.applicantId.equals(context.applicant._id)) {
+      return reply.code(404).send({ error: 'Interest request not found' });
+    }
+
+    if (interestRequest.status !== 'accepted') {
+      return reply.code(409).send({ error: 'Accept the interest request before messaging opens' });
+    }
+
+    await createApplicantMessage(context.db, interestRequest.recruiterId, context.applicant._id, parsed.data.body);
+    const recruiter = await recruiterAccountsCollection(context.db).findOne({ _id: interestRequest.recruiterId });
+
+    if (recruiter) {
+      publishRecruiterEvent(recruiter.supabaseUserId, 'message_sent', {
+        type: 'message_sent',
+        requestId: interestRequest._id.toString(),
+        applicantId: context.applicant._id.toString(),
+        body: parsed.data.body,
+        createdAt: new Date().toISOString()
+      });
+    }
+
+    return { sent: true };
   });
 
   app.get('/profile', { preHandler: requireSupabaseUser }, async (request, reply) => {

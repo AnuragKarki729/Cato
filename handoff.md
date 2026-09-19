@@ -919,6 +919,19 @@ Profile strength weighting decision:
   - 1+ internship = 10%.
   - Additional internships do not increase this portion.
 
+Recruiter dynamic search decision:
+
+- Recruiter dynamic search should run as a temporary deterministic `SearchSpec`.
+- Runtime searches must not create persistent job/role records automatically.
+- A search only becomes a recruiter job when the recruiter explicitly saves it.
+- V1 recruiter dynamic search is structured-first: employment type, field/category, skills, graduation status, GPA, semester, major, university, and later international-student status.
+- Field/category and skill controls should be search-to-select dropdowns.
+- Recruiters can add missing fields/categories and skills from the search UI.
+- Recruiter-added matching options are normalized to lowercased standardized keys, deduplicated, and saved in a shared backend option catalog.
+- Free-text search can remain as a later additive input to the same `SearchSpec`.
+- Student matching must normalize unrealistic years-of-experience phrasing into skill evidence strength instead of literal years.
+- Example: `10 years Python` for a college student search means strong Python evidence across resume text, projects, internships, and profile signals.
+
 ## 20. Agent Workflow Plan
 
 Use sub-agents only for scoped work with clear ownership. The main Codex agent remains responsible for final integration, conflict resolution, and keeping this handoff accurate.

@@ -23,6 +23,10 @@ type SignedVideoUploadInput = {
   videoType: '10_sec' | '30_sec';
 };
 
+type SignedApplicantReelVideoUploadInput = {
+  supabaseUserId: string;
+};
+
 type SignedProfileImageUploadInput = {
   supabaseUserId: string;
 };
@@ -69,6 +73,37 @@ export function createSignedVideoUpload(input: SignedVideoUploadInput) {
     signature,
     folder,
     publicId,
+    expiresInSeconds: signedUploadExpirySeconds
+  };
+}
+
+export function createSignedApplicantReelVideoUpload(input: SignedApplicantReelVideoUploadInput) {
+  const timestamp = Math.floor(Date.now() / 1000);
+  const folder = `${input.supabaseUserId}/video/reels`;
+  const publicId = `reel_${Date.now()}`;
+  const signature = cloudinary.utils.api_sign_request(
+    {
+      folder,
+      public_id: publicId,
+      timestamp
+    },
+    env.CLOUDINARY_API_SECRET
+  );
+
+  return {
+    uploadUrl: `https://api.cloudinary.com/v1_1/${env.CLOUDINARY_CLOUD_NAME}/video/upload`,
+    cloudName: env.CLOUDINARY_CLOUD_NAME,
+    apiKey: env.CLOUDINARY_API_KEY,
+    timestamp,
+    signature,
+    folder,
+    publicId,
+    maxDurationSeconds: 60,
+    maxFileSizeBytes: 80 * 1024 * 1024,
+    recommendedMaxResolution: '720p',
+    recommendedVideoBitrateKbps: 1400,
+    recommendedAudioBitrateKbps: 96,
+    deliveryTransformation: 'q_auto:eco,vc_auto,w_720,c_limit',
     expiresInSeconds: signedUploadExpirySeconds
   };
 }

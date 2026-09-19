@@ -17,6 +17,13 @@ type RecruiterVideoFeedCardProps = {
   onToggleChromeDimmed?: () => void;
 };
 
+function formatMatchStrength(value: RecruiterCandidate['matchStrength']) {
+  if (value === 'strong_match') return 'Strong match';
+  if (value === 'good_match') return 'Good match';
+  if (value === 'potential_match') return 'Potential match';
+  return 'Needs review';
+}
+
 export function RecruiterVideoFeedCard({
   candidate,
   height,
@@ -88,6 +95,14 @@ export function RecruiterVideoFeedCard({
         pointerEvents={isChromeDimmed ? 'none' : 'box-none'}
         style={[styles.content, isChromeDimmed ? styles.contentDimmed : styles.contentReadable]}
       >
+        <View style={styles.matchRow}>
+          <View style={styles.matchPill}>
+            <Text style={styles.matchPillText}>{formatMatchStrength(candidate.matchStrength)}</Text>
+          </View>
+          <View style={styles.matchScore}>
+            <Text style={styles.matchScoreText}>{candidate.matchScore}%</Text>
+          </View>
+        </View>
         <Text style={styles.name}>{candidate.name ?? 'Applicant'}</Text>
         <Text style={styles.meta}>
           {[candidate.semesterLabel, candidate.major, candidate.universityName].filter(Boolean).join(' · ') || 'Profile details pending'}
@@ -169,6 +184,31 @@ const styles = StyleSheet.create({
   contentDimmed: {
     backgroundColor: 'transparent',
     opacity: 0.3
+  },
+  matchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm
+  },
+  matchPill: {
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs
+  },
+  matchPillText: {
+    color: colors.primaryText,
+    ...typography.meta
+  },
+  matchScore: {
+    borderRadius: 999,
+    backgroundColor: colors.accent,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs
+  },
+  matchScoreText: {
+    color: colors.text,
+    ...typography.meta
   },
   name: {
     color: colors.primaryText,

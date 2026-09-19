@@ -34,6 +34,7 @@ module.exports = {
   icon: './assets/icon.png',
   userInterfaceStyle: 'automatic',
   ios: {
+    buildNumber: '1',
     bundleIdentifier: 'com.anuragkarki.cato',
     supportsTablet: false,
     usesAppleSignIn: true
@@ -44,7 +45,7 @@ module.exports = {
       foregroundImage: './assets/adaptive-icon.png'
     },
     package: 'com.cato.poc',
-    versionCode: 3
+    versionCode: 4
   },
   extra: {
     googleWebClientId: getGoogleWebClientId(),

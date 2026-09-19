@@ -4,6 +4,14 @@
 !.env.example
 client_secret_*.apps.googleusercontent.com.json
 android_client_secret_*.apps.googleusercontent.com.json
+client_secret_web_redirect.json
+local.properties
+.gradle/
+**/.gradle/
+release-builds/
+*.ipa
+*.aab
+*.apk
 
 # Dependencies
 node_modules/

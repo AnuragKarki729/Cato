@@ -37,6 +37,11 @@ export async function deleteApplicantAccount(db: Db, applicantId: ObjectId, supa
     db.collection(collections.applicantSignals).deleteMany({ applicantId }),
     db.collection(collections.applicantActivities).deleteMany({ applicantId }),
     db.collection(collections.applicantProjects).deleteMany({ applicantId }),
+    db.collection(collections.applicantAccomplishments).deleteMany({ applicantId }),
+    db.collection(collections.applicantVideos).deleteMany({ applicantId }),
+    db.collection(collections.applicantVideoLinks).deleteMany({ applicantId }),
+    db.collection(collections.applicantVideoLikes).deleteMany({ applicantId }),
+    db.collection(collections.applicantVideoViews).deleteMany({ applicantId }),
     db.collection(collections.softSkillOutputs).deleteMany({ applicantId }),
     db.collection(collections.internships).deleteMany({ applicantId }),
     db.collection(collections.recruiterCandidateReviews).deleteMany({ applicantId }),
@@ -58,7 +63,9 @@ export async function deleteRecruiterAccount(db: Db, recruiterId: ObjectId, supa
     db.collection(collections.recruiterInterestRequests).deleteMany({ recruiterId }),
     db.collection(collections.recruiterMessages).deleteMany({ recruiterId }),
     db.collection(collections.recruiterSavedFilters).deleteMany({ recruiterId }),
-    db.collection(collections.applicantActivities).deleteMany({ recruiterId })
+    db.collection(collections.applicantActivities).deleteMany({ recruiterId }),
+    db.collection(collections.applicantVideoLikes).deleteMany({ actorType: 'recruiter', actorId: recruiterId }),
+    db.collection(collections.applicantVideoViews).deleteMany({ actorType: 'recruiter', actorId: recruiterId })
   ]);
 
   await db.collection(collections.recruiterAccounts).deleteOne({ _id: recruiterId });

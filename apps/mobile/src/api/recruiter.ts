@@ -6,6 +6,7 @@ import type {
   RecruiterCandidatesResponse,
   RecruiterContactCandidateRequest,
   RecruiterDashboardResponse,
+  RecruiterEvidenceQueueResponse,
   RecruiterInterestRequest,
   RecruiterInterestRequestsResponse,
   RecruiterMessagesResponse,
@@ -50,6 +51,32 @@ export function getRecruiterCandidates(accessToken: string, filters: RecruiterCa
   const path = queryString ? `/recruiter/candidates?${queryString}` : '/recruiter/candidates';
 
   return apiGet<RecruiterCandidatesResponse>(path, accessToken);
+}
+
+export function getRecruiterEvidenceQueue(accessToken: string, filters: RecruiterCandidateSearchFilters = {}) {
+  const params = new URLSearchParams();
+
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === '') {
+      return;
+    }
+
+    if (Array.isArray(value)) {
+      value.forEach((item) => {
+        if (item !== undefined && item !== null && item !== '') {
+          params.append(key, String(item));
+        }
+      });
+      return;
+    }
+
+    params.set(key, String(value));
+  });
+
+  const queryString = params.toString();
+  const path = queryString ? `/recruiter/evidence-queue?${queryString}` : '/recruiter/evidence-queue';
+
+  return apiGet<RecruiterEvidenceQueueResponse>(path, accessToken);
 }
 
 export function getRecruiterCandidate(accessToken: string, candidateId: string) {

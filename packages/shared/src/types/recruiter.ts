@@ -34,9 +34,16 @@ export type RecruiterCandidate = {
   signalSummary?: string;
   tenSecondVideoUrl?: string;
   thirtySecondVideoUrl?: string;
+  hasResume: boolean;
+  hasDeeperSignal: boolean;
   resumeUrl?: string;
   resumePreviewUrl?: string;
   resumeFileName?: string;
+  profileStrength: number;
+  matchScore: number;
+  matchStrength: 'strong_match' | 'good_match' | 'potential_match' | 'needs_review';
+  matchEvidence: RecruiterCandidateEvidence[];
+  needsValidation: RecruiterCandidateValidation[];
   softSkills: Array<{
     label: string;
     rating: number;
@@ -61,6 +68,20 @@ export type RecruiterCandidate = {
   interestRequestExpiresAt?: string;
   interestRequestResendAvailableAt?: string;
   interestRequestStatus?: RecruiterInterestRequestStatus;
+};
+
+export type RecruiterCandidateEvidence = {
+  id: string;
+  type: 'education' | 'resume' | 'signal' | 'soft_skill' | 'project' | 'internship' | 'filter';
+  title: string;
+  body: string;
+  strength: 'strong' | 'moderate' | 'light';
+};
+
+export type RecruiterCandidateValidation = {
+  id: string;
+  title: string;
+  body: string;
 };
 
 export type RecruiterInterestRequestStatus = 'sent' | 'viewed' | 'accepted' | 'declined' | 'expired';
@@ -111,6 +132,10 @@ export type RecruiterDashboardResponse = {
 
 export type RecruiterCandidatesResponse = {
   candidates: RecruiterCandidate[];
+};
+
+export type RecruiterEvidenceQueueResponse = {
+  queue: RecruiterCandidate[];
 };
 
 export type RecruiterCandidateSearchFilters = {

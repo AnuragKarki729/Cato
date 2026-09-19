@@ -344,6 +344,20 @@ export default function ProfileScreen() {
       return null;
     }
 
+    const hasResume = Boolean(profile.resume?.secureUrl || profile.resume?.previewUrl);
+    const hasDeeperSignal = Boolean(profile.signal?.thirtySecondVideo?.secureUrl);
+    const projectCount = profile.projects.length;
+    const profileStrength = Math.min(
+      100,
+      (hasResume ? 20 : 0) +
+        (profile.signal?.tenSecondVideo?.secureUrl ? 20 : 0) +
+        (hasDeeperSignal ? 15 : 0) +
+        (profile.signal?.tenSecondElaboration?.trim() ? 10 : 0) +
+        ((profile.softSkills?.items.length ?? 0) > 0 ? 5 : 0) +
+        (projectCount === 0 ? 0 : projectCount === 1 ? 10 : projectCount === 2 ? 17 : 20) +
+        (profile.internships.length > 0 ? 10 : 0)
+    );
+
     return {
       id: profile.applicant.id,
       applicantId: profile.applicant.id,
@@ -360,9 +374,16 @@ export default function ProfileScreen() {
       signalSummary: profile.signal?.tenSecondElaboration,
       tenSecondVideoUrl: profile.signal?.tenSecondVideo?.secureUrl,
       thirtySecondVideoUrl: profile.signal?.thirtySecondVideo?.secureUrl,
+      hasResume,
+      hasDeeperSignal,
       resumeUrl: profile.resume?.secureUrl,
       resumePreviewUrl: profile.resume?.previewUrl ?? profile.resume?.secureUrl,
       resumeFileName: profile.resume?.originalFileName,
+      profileStrength,
+      matchScore: profileStrength,
+      matchStrength: profileStrength >= 88 ? 'strong_match' : profileStrength >= 76 ? 'good_match' : profileStrength >= 62 ? 'potential_match' : 'needs_review',
+      matchEvidence: [],
+      needsValidation: [],
       softSkills: profile.softSkills?.items ?? [],
       internships: profile.internships.map((internship) => ({
         id: internship.id,

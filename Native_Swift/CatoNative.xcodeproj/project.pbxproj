@@ -1,0 +1,547 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A10000000000000000000001 /* CatoNativeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000001 /* CatoNativeApp.swift */; };
+		A10000000000000000000002 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000002 /* RootView.swift */; };
+		A10000000000000000000003 /* CatoTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000003 /* CatoTheme.swift */; };
+		A10000000000000000000004 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000004 /* LoginView.swift */; };
+		A10000000000000000000005 /* ApplicantHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000005 /* ApplicantHomeView.swift */; };
+		A10000000000000000000006 /* CandidateReviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000006 /* CandidateReviewView.swift */; };
+		A10000000000000000000007 /* RecruiterBookmarksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000007 /* RecruiterBookmarksView.swift */; };
+		A10000000000000000000008 /* RecruiterDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000008 /* RecruiterDashboardView.swift */; };
+		A10000000000000000000009 /* RecruiterMessagesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000009 /* RecruiterMessagesView.swift */; };
+		A10000000000000000000010 /* RecruiterResultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000010 /* RecruiterResultsView.swift */; };
+		A10000000000000000000011 /* RecruiterSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000011 /* RecruiterSearchView.swift */; };
+		A10000000000000000000012 /* RecruiterShellView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000012 /* RecruiterShellView.swift */; };
+		A10000000000000000000013 /* CatoConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000013 /* CatoConfig.swift */; };
+		A10000000000000000000014 /* AuthModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000014 /* AuthModels.swift */; };
+		A10000000000000000000015 /* AuthSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000015 /* AuthSessionStore.swift */; };
+		A10000000000000000000016 /* SupabaseAuthClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000016 /* SupabaseAuthClient.swift */; };
+		A10000000000000000000017 /* CatoAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000017 /* CatoAPIClient.swift */; };
+		A10000000000000000000018 /* AppleNonce.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000018 /* AppleNonce.swift */; };
+		A10000000000000000000019 /* AuthViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000019 /* AuthViewModel.swift */; };
+		A10000000000000000000023 /* OAuthPKCE.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000023 /* OAuthPKCE.swift */; };
+		A10000000000000000000024 /* GoogleOAuthSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000024 /* GoogleOAuthSession.swift */; };
+		A10000000000000000000032 /* RecruiterEvidenceQueueView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000032 /* RecruiterEvidenceQueueView.swift */; };
+		A10000000000000000000033 /* RecruiterShortlistView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000033 /* RecruiterShortlistView.swift */; };
+		A10000000000000000000034 /* RecruiterComparisonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000034 /* RecruiterComparisonView.swift */; };
+		A10000000000000000000035 /* RecruiterContactView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000035 /* RecruiterContactView.swift */; };
+		A10000000000000000000036 /* CandidateDetailTabsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000036 /* CandidateDetailTabsView.swift */; };
+		A10000000000000000000037 /* RecruiterSharedViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000037 /* RecruiterSharedViews.swift */; };
+		A10000000000000000000038 /* RecruiterSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000038 /* RecruiterSettingsView.swift */; };
+		A10000000000000000000039 /* ApplicantSharedViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000039 /* ApplicantSharedViews.swift */; };
+		A10000000000000000000040 /* ApplicantRequestsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000040 /* ApplicantRequestsView.swift */; };
+		A10000000000000000000041 /* ApplicantProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000041 /* ApplicantProfileView.swift */; };
+		A10000000000000000000042 /* ApplicantSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000042 /* ApplicantSettingsView.swift */; };
+		A10000000000000000000043 /* ApplicantOnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000043 /* ApplicantOnboardingView.swift */; };
+		A10000000000000000000044 /* ApplicantVideoUploadStep.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000044 /* ApplicantVideoUploadStep.swift */; };
+		A10000000000000000000045 /* ApplicantResumeUploadStep.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000045 /* ApplicantResumeUploadStep.swift */; };
+		A10000000000000000000046 /* ApplicantSearchProfileEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000046 /* ApplicantSearchProfileEditorView.swift */; };
+		A10000000000000000000047 /* CatoSSEClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000047 /* CatoSSEClient.swift */; };
+		A10000000000000000000048 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000048 /* Assets.xcassets */; };
+		A10000000000000000000020 /* CatoModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000020 /* CatoModels.swift */; };
+		A10000000000000000000021 /* CatoFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000021 /* CatoFixtures.swift */; };
+		A10000000000000000000030 /* CatoNativeCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A20000000000000000000030 /* CatoNativeCore.framework */; };
+		A10000000000000000000031 /* CatoNativeCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = A20000000000000000000030 /* CatoNativeCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		87744B38305BA66A006C2432 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A90000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A50000000000000000000002;
+			remoteInfo = CatoNativeCore;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		A30000000000000000000003 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				A10000000000000000000031 /* CatoNativeCore.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		A20000000000000000000001 /* CatoNativeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatoNativeApp.swift; sourceTree = "<group>"; };
+		A20000000000000000000002 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		A20000000000000000000003 /* CatoTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatoTheme.swift; sourceTree = "<group>"; };
+		A20000000000000000000004 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		A20000000000000000000005 /* ApplicantHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplicantHomeView.swift; sourceTree = "<group>"; };
+		A20000000000000000000006 /* CandidateReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateReviewView.swift; sourceTree = "<group>"; };
+		A20000000000000000000007 /* RecruiterBookmarksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecruiterBookmarksView.swift; sourceTree = "<group>"; };
+		A20000000000000000000008 /* RecruiterDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecruiterDashboardView.swift; sourceTree = "<group>"; };
+		A20000000000000000000009 /* RecruiterMessagesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecruiterMessagesView.swift; sourceTree = "<group>"; };
+		A20000000000000000000010 /* RecruiterResultsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecruiterResultsView.swift; sourceTree = "<group>"; };
+		A20000000000000000000011 /* RecruiterSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecruiterSearchView.swift; sourceTree = "<group>"; };
+		A20000000000000000000012 /* RecruiterShellView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecruiterShellView.swift; sourceTree = "<group>"; };
+		A20000000000000000000013 /* CatoConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatoConfig.swift; sourceTree = "<group>"; };
+		A20000000000000000000014 /* AuthModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthModels.swift; sourceTree = "<group>"; };
+		A20000000000000000000015 /* AuthSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthSessionStore.swift; sourceTree = "<group>"; };
+		A20000000000000000000016 /* SupabaseAuthClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseAuthClient.swift; sourceTree = "<group>"; };
+		A20000000000000000000017 /* CatoAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatoAPIClient.swift; sourceTree = "<group>"; };
+		A20000000000000000000018 /* AppleNonce.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleNonce.swift; sourceTree = "<group>"; };
+		A20000000000000000000019 /* AuthViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViewModel.swift; sourceTree = "<group>"; };
+		A20000000000000000000023 /* OAuthPKCE.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OAuthPKCE.swift; sourceTree = "<group>"; };
+		A20000000000000000000024 /* GoogleOAuthSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleOAuthSession.swift; sourceTree = "<group>"; };
+		A20000000000000000000032 /* RecruiterEvidenceQueueView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecruiterEvidenceQueueView.swift; sourceTree = "<group>"; };
+		A20000000000000000000033 /* RecruiterShortlistView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecruiterShortlistView.swift; sourceTree = "<group>"; };
+		A20000000000000000000034 /* RecruiterComparisonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecruiterComparisonView.swift; sourceTree = "<group>"; };
+		A20000000000000000000035 /* RecruiterContactView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecruiterContactView.swift; sourceTree = "<group>"; };
+		A20000000000000000000036 /* CandidateDetailTabsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateDetailTabsView.swift; sourceTree = "<group>"; };
+		A20000000000000000000037 /* RecruiterSharedViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecruiterSharedViews.swift; sourceTree = "<group>"; };
+		A20000000000000000000038 /* RecruiterSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecruiterSettingsView.swift; sourceTree = "<group>"; };
+		A20000000000000000000039 /* ApplicantSharedViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplicantSharedViews.swift; sourceTree = "<group>"; };
+		A20000000000000000000040 /* ApplicantRequestsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplicantRequestsView.swift; sourceTree = "<group>"; };
+		A20000000000000000000041 /* ApplicantProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplicantProfileView.swift; sourceTree = "<group>"; };
+		A20000000000000000000042 /* ApplicantSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplicantSettingsView.swift; sourceTree = "<group>"; };
+		A20000000000000000000043 /* ApplicantOnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplicantOnboardingView.swift; sourceTree = "<group>"; };
+		A20000000000000000000044 /* ApplicantVideoUploadStep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplicantVideoUploadStep.swift; sourceTree = "<group>"; };
+		A20000000000000000000045 /* ApplicantResumeUploadStep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplicantResumeUploadStep.swift; sourceTree = "<group>"; };
+		A20000000000000000000046 /* ApplicantSearchProfileEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplicantSearchProfileEditorView.swift; sourceTree = "<group>"; };
+		A20000000000000000000047 /* CatoSSEClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatoSSEClient.swift; sourceTree = "<group>"; };
+		A20000000000000000000048 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A20000000000000000000025 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A20000000000000000000020 /* CatoModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatoModels.swift; sourceTree = "<group>"; };
+		A20000000000000000000021 /* CatoFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatoFixtures.swift; sourceTree = "<group>"; };
+		A20000000000000000000022 /* CatoNative.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = CatoNative.entitlements; sourceTree = "<group>"; };
+		A20000000000000000000030 /* CatoNativeCore.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = CatoNativeCore.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		A20000000000000000000031 /* CatoNative.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CatoNative.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A30000000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000030 /* CatoNativeCore.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A30000000000000000000002 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A40000000000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				A40000000000000000000002 /* CatoNativeApp */,
+				A40000000000000000000010 /* Sources/CatoNativeCore */,
+				A40000000000000000000020 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A40000000000000000000002 /* CatoNativeApp */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000001 /* CatoNativeApp.swift */,
+				A20000000000000000000002 /* RootView.swift */,
+				A20000000000000000000025 /* Info.plist */,
+				A20000000000000000000022 /* CatoNative.entitlements */,
+				A20000000000000000000048 /* Assets.xcassets */,
+				A40000000000000000000007 /* Config */,
+				A40000000000000000000003 /* Theme */,
+				A40000000000000000000004 /* Auth */,
+				A40000000000000000000005 /* Applicant */,
+				A40000000000000000000006 /* Recruiter */,
+			);
+			path = CatoNativeApp;
+			sourceTree = "<group>";
+		};
+		A40000000000000000000003 /* Theme */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000003 /* CatoTheme.swift */,
+			);
+			path = Theme;
+			sourceTree = "<group>";
+		};
+		A40000000000000000000004 /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000004 /* LoginView.swift */,
+				A20000000000000000000014 /* AuthModels.swift */,
+				A20000000000000000000015 /* AuthSessionStore.swift */,
+				A20000000000000000000016 /* SupabaseAuthClient.swift */,
+				A20000000000000000000017 /* CatoAPIClient.swift */,
+				A20000000000000000000018 /* AppleNonce.swift */,
+				A20000000000000000000019 /* AuthViewModel.swift */,
+				A20000000000000000000023 /* OAuthPKCE.swift */,
+				A20000000000000000000024 /* GoogleOAuthSession.swift */,
+				A20000000000000000000047 /* CatoSSEClient.swift */,
+			);
+			path = Auth;
+			sourceTree = "<group>";
+		};
+		A40000000000000000000005 /* Applicant */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000005 /* ApplicantHomeView.swift */,
+				A20000000000000000000039 /* ApplicantSharedViews.swift */,
+				A20000000000000000000040 /* ApplicantRequestsView.swift */,
+				A20000000000000000000041 /* ApplicantProfileView.swift */,
+				A20000000000000000000042 /* ApplicantSettingsView.swift */,
+				A20000000000000000000043 /* ApplicantOnboardingView.swift */,
+				A20000000000000000000044 /* ApplicantVideoUploadStep.swift */,
+				A20000000000000000000045 /* ApplicantResumeUploadStep.swift */,
+				A20000000000000000000046 /* ApplicantSearchProfileEditorView.swift */,
+			);
+			path = Applicant;
+			sourceTree = "<group>";
+		};
+		A40000000000000000000006 /* Recruiter */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000006 /* CandidateReviewView.swift */,
+				A20000000000000000000007 /* RecruiterBookmarksView.swift */,
+				A20000000000000000000008 /* RecruiterDashboardView.swift */,
+				A20000000000000000000009 /* RecruiterMessagesView.swift */,
+				A20000000000000000000010 /* RecruiterResultsView.swift */,
+				A20000000000000000000011 /* RecruiterSearchView.swift */,
+				A20000000000000000000012 /* RecruiterShellView.swift */,
+				A20000000000000000000032 /* RecruiterEvidenceQueueView.swift */,
+				A20000000000000000000033 /* RecruiterShortlistView.swift */,
+				A20000000000000000000034 /* RecruiterComparisonView.swift */,
+				A20000000000000000000035 /* RecruiterContactView.swift */,
+				A20000000000000000000036 /* CandidateDetailTabsView.swift */,
+				A20000000000000000000037 /* RecruiterSharedViews.swift */,
+				A20000000000000000000038 /* RecruiterSettingsView.swift */,
+			);
+			path = Recruiter;
+			sourceTree = "<group>";
+		};
+		A40000000000000000000007 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000013 /* CatoConfig.swift */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+		A40000000000000000000010 /* Sources/CatoNativeCore */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000020 /* CatoModels.swift */,
+				A20000000000000000000021 /* CatoFixtures.swift */,
+			);
+			path = Sources/CatoNativeCore;
+			sourceTree = "<group>";
+		};
+		A40000000000000000000020 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000031 /* CatoNative.app */,
+				A20000000000000000000030 /* CatoNativeCore.framework */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A50000000000000000000001 /* CatoNative */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A60000000000000000000001 /* Build configuration list for PBXNativeTarget "CatoNative" */;
+			buildPhases = (
+				A30000000000000000000001 /* Frameworks */,
+				A70000000000000000000001 /* Sources */,
+				A70000000000000000000003 /* Resources */,
+				A30000000000000000000003 /* Embed Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A80000000000000000000001 /* PBXTargetDependency */,
+			);
+			name = CatoNative;
+			productName = CatoNative;
+			productReference = A20000000000000000000031 /* CatoNative.app */;
+			productType = "com.apple.product-type.application";
+		};
+		A50000000000000000000002 /* CatoNativeCore */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A60000000000000000000002 /* Build configuration list for PBXNativeTarget "CatoNativeCore" */;
+			buildPhases = (
+				A30000000000000000000002 /* Frameworks */,
+				A70000000000000000000002 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = CatoNativeCore;
+			productName = CatoNativeCore;
+			productReference = A20000000000000000000030 /* CatoNativeCore.framework */;
+			productType = "com.apple.product-type.framework";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A90000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					A50000000000000000000001 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+					A50000000000000000000002 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+				};
+			};
+			buildConfigurationList = A60000000000000000000003 /* Build configuration list for PBXProject "CatoNative" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = A40000000000000000000001;
+			productRefGroup = A40000000000000000000020 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A50000000000000000000001 /* CatoNative */,
+				A50000000000000000000002 /* CatoNativeCore */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A70000000000000000000003 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000048 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A70000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000001 /* CatoNativeApp.swift in Sources */,
+				A10000000000000000000002 /* RootView.swift in Sources */,
+				A10000000000000000000003 /* CatoTheme.swift in Sources */,
+				A10000000000000000000004 /* LoginView.swift in Sources */,
+				A10000000000000000000005 /* ApplicantHomeView.swift in Sources */,
+				A10000000000000000000006 /* CandidateReviewView.swift in Sources */,
+				A10000000000000000000007 /* RecruiterBookmarksView.swift in Sources */,
+				A10000000000000000000008 /* RecruiterDashboardView.swift in Sources */,
+				A10000000000000000000009 /* RecruiterMessagesView.swift in Sources */,
+				A10000000000000000000010 /* RecruiterResultsView.swift in Sources */,
+				A10000000000000000000011 /* RecruiterSearchView.swift in Sources */,
+				A10000000000000000000012 /* RecruiterShellView.swift in Sources */,
+				A10000000000000000000032 /* RecruiterEvidenceQueueView.swift in Sources */,
+				A10000000000000000000033 /* RecruiterShortlistView.swift in Sources */,
+				A10000000000000000000034 /* RecruiterComparisonView.swift in Sources */,
+				A10000000000000000000035 /* RecruiterContactView.swift in Sources */,
+				A10000000000000000000036 /* CandidateDetailTabsView.swift in Sources */,
+				A10000000000000000000037 /* RecruiterSharedViews.swift in Sources */,
+				A10000000000000000000038 /* RecruiterSettingsView.swift in Sources */,
+				A10000000000000000000039 /* ApplicantSharedViews.swift in Sources */,
+				A10000000000000000000040 /* ApplicantRequestsView.swift in Sources */,
+				A10000000000000000000041 /* ApplicantProfileView.swift in Sources */,
+				A10000000000000000000042 /* ApplicantSettingsView.swift in Sources */,
+				A10000000000000000000043 /* ApplicantOnboardingView.swift in Sources */,
+				A10000000000000000000044 /* ApplicantVideoUploadStep.swift in Sources */,
+				A10000000000000000000045 /* ApplicantResumeUploadStep.swift in Sources */,
+				A10000000000000000000046 /* ApplicantSearchProfileEditorView.swift in Sources */,
+				A10000000000000000000047 /* CatoSSEClient.swift in Sources */,
+				A10000000000000000000013 /* CatoConfig.swift in Sources */,
+				A10000000000000000000014 /* AuthModels.swift in Sources */,
+				A10000000000000000000015 /* AuthSessionStore.swift in Sources */,
+				A10000000000000000000016 /* SupabaseAuthClient.swift in Sources */,
+				A10000000000000000000017 /* CatoAPIClient.swift in Sources */,
+				A10000000000000000000018 /* AppleNonce.swift in Sources */,
+				A10000000000000000000019 /* AuthViewModel.swift in Sources */,
+				A10000000000000000000023 /* OAuthPKCE.swift in Sources */,
+				A10000000000000000000024 /* GoogleOAuthSession.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A70000000000000000000002 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000020 /* CatoModels.swift in Sources */,
+				A10000000000000000000021 /* CatoFixtures.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A80000000000000000000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A50000000000000000000002 /* CatoNativeCore */;
+			targetProxy = 87744B38305BA66A006C2432 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		AA00000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		AA00000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		AA00000000000000000000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = CatoNativeApp/CatoNative.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3R89593ZKG;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = CatoNativeApp/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.anuragkarki.cato;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		AA00000000000000000000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = CatoNativeApp/CatoNative.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3R89593ZKG;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = CatoNativeApp/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.anuragkarki.cato;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		AA00000000000000000000005 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEFINES_MODULE = YES;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_DYLIB_INSTALL_NAME = "@rpath/$(EXECUTABLE_PATH)";
+				MACH_O_TYPE = mh_dylib;
+				PRODUCT_BUNDLE_IDENTIFIER = com.anuragkarki.cato.native.core;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		AA00000000000000000000006 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEFINES_MODULE = YES;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_DYLIB_INSTALL_NAME = "@rpath/$(EXECUTABLE_PATH)";
+				MACH_O_TYPE = mh_dylib;
+				PRODUCT_BUNDLE_IDENTIFIER = com.anuragkarki.cato.native.core;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A60000000000000000000001 /* Build configuration list for PBXNativeTarget "CatoNative" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AA00000000000000000000003 /* Debug */,
+				AA00000000000000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A60000000000000000000002 /* Build configuration list for PBXNativeTarget "CatoNativeCore" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AA00000000000000000000005 /* Debug */,
+				AA00000000000000000000006 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A60000000000000000000003 /* Build configuration list for PBXProject "CatoNative" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AA00000000000000000000001 /* Debug */,
+				AA00000000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = A90000000000000000000001 /* Project object */;
+}

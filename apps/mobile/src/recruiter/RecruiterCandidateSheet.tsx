@@ -62,6 +62,13 @@ function getReviewStatusExplanation(status: RecruiterCandidateReviewStatus) {
   return 'No status means the recruiter has not categorized your profile yet.';
 }
 
+function formatMatchStrength(value: RecruiterCandidate['matchStrength']) {
+  if (value === 'strong_match') return 'Strong match';
+  if (value === 'good_match') return 'Good match';
+  if (value === 'potential_match') return 'Potential match';
+  return 'Needs review';
+}
+
 function SwipeDismissLayer({ children, onDismiss }: { children: ReactNode; onDismiss: () => void }) {
   const panResponder = useMemo(
     () =>
@@ -241,6 +248,41 @@ export function RecruiterCandidateSheet({
                   {candidate.bookmarked ? 'Bookmarked' : 'Bookmark'}
                 </Text>
               </Pressable>
+            ) : null}
+            <View style={styles.matchSummary}>
+              <View>
+                <Text style={styles.matchLabel}>{formatMatchStrength(candidate.matchStrength)}</Text>
+                <Text style={styles.matchMeta}>Profile strength {candidate.profileStrength}%</Text>
+              </View>
+              <View style={styles.matchScoreBadge}>
+                <Text style={styles.matchScoreText}>{candidate.matchScore}%</Text>
+              </View>
+            </View>
+            {candidate.matchEvidence.length > 0 ? (
+              <>
+                <Text style={styles.sectionTitle}>Key evidence</Text>
+                <View style={styles.evidenceList}>
+                  {candidate.matchEvidence.slice(0, 4).map((item) => (
+                    <View key={item.id} style={styles.evidenceCard}>
+                      <Text style={styles.evidenceTitle}>{item.title}</Text>
+                      <Text style={styles.evidenceBody}>{item.body}</Text>
+                    </View>
+                  ))}
+                </View>
+              </>
+            ) : null}
+            {candidate.needsValidation.length > 0 ? (
+              <>
+                <Text style={styles.sectionTitle}>Needs validation</Text>
+                <View style={styles.evidenceList}>
+                  {candidate.needsValidation.slice(0, 2).map((item) => (
+                    <View key={item.id} style={styles.validationCard}>
+                      <Text style={styles.evidenceTitle}>{item.title}</Text>
+                      <Text style={styles.evidenceBody}>{item.body}</Text>
+                    </View>
+                  ))}
+                </View>
+              </>
             ) : null}
             <Text style={styles.sectionTitle}>Review</Text>
             <View style={styles.reviewStatusRow}>
@@ -471,6 +513,66 @@ const styles = StyleSheet.create({
   },
   bookmarkActionTextActive: {
     color: colors.text
+  },
+  matchSummary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+    backgroundColor: colors.surface,
+    padding: spacing.md
+  },
+  matchLabel: {
+    color: colors.text,
+    ...typography.label
+  },
+  matchMeta: {
+    marginTop: 3,
+    color: colors.muted,
+    ...typography.meta
+  },
+  matchScoreBadge: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 58,
+    minHeight: 58,
+    borderRadius: 999,
+    backgroundColor: colors.primary
+  },
+  matchScoreText: {
+    color: colors.primaryText,
+    fontSize: 18,
+    fontWeight: '900'
+  },
+  evidenceList: {
+    gap: spacing.sm
+  },
+  evidenceCard: {
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+    backgroundColor: colors.surface,
+    padding: spacing.md
+  },
+  validationCard: {
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+    backgroundColor: colors.surfaceMuted,
+    padding: spacing.md
+  },
+  evidenceTitle: {
+    color: colors.text,
+    ...typography.meta
+  },
+  evidenceBody: {
+    color: colors.muted,
+    ...typography.body
   },
   reviewStatusRow: {
     flexDirection: 'row',

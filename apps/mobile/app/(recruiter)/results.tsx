@@ -10,6 +10,13 @@ import { RecruiterEmptyState } from '../../src/recruiter/RecruiterEmptyState';
 import { useSession } from '../../src/hooks/useSession';
 import { colors, radii, spacing, typography } from '../../src/theme';
 
+function formatMatchStrength(value: RecruiterCandidate['matchStrength']) {
+  if (value === 'strong_match') return 'Strong match';
+  if (value === 'good_match') return 'Good match';
+  if (value === 'potential_match') return 'Potential match';
+  return 'Needs review';
+}
+
 export default function RecruiterResultsScreen() {
   const { session } = useSession();
   const params = useLocalSearchParams();
@@ -61,9 +68,24 @@ export default function RecruiterResultsScreen() {
     <RecruiterContent>
       <View style={styles.row}>
         <Text style={styles.title}>{candidates.length} {candidates.length === 1 ? 'result' : 'results'}</Text>
-        <Pressable onPress={() => router.push('/(recruiter)/feed')}>
-          <Text style={styles.linkText}>Video feed</Text>
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable
+            onPress={() =>
+              router.push({
+                pathname: '/(recruiter)/evidence-queue',
+                params: buildSearchParams(filters)
+              })
+            }
+          >
+            <Text style={styles.linkText}>Evidence queue</Text>
+          </Pressable>
+          <Pressable onPress={() => router.push('/(recruiter)/shortlist')}>
+            <Text style={styles.linkText}>Shortlist</Text>
+          </Pressable>
+          <Pressable onPress={() => router.push('/(recruiter)/feed')}>
+            <Text style={styles.linkText}>Video feed</Text>
+          </Pressable>
+        </View>
       </View>
       <Text style={styles.body}>
         {filters.categoryFieldId || filters.categoryFieldIds?.length
@@ -96,14 +118,28 @@ export default function RecruiterResultsScreen() {
               </View>
             )}
             <View style={styles.cardBody}>
-              <Text style={styles.name}>{candidate.name ?? 'Applicant'}</Text>
-              {candidate.categoryMatch ? (
-                <View style={styles.matchBadge}>
-                  <Text style={styles.matchBadgeText}>{candidate.categoryMatch.label}</Text>
+              <View style={styles.nameRow}>
+                <Text style={styles.name}>{candidate.name ?? 'Applicant'}</Text>
+                <View style={styles.scoreBadge}>
+                  <Text style={styles.scoreText}>{candidate.matchScore}%</Text>
                 </View>
-              ) : null}
+              </View>
+              <View style={styles.matchRow}>
+                <View style={styles.matchBadge}>
+                  <Text style={styles.matchBadgeText}>{formatMatchStrength(candidate.matchStrength)}</Text>
+                </View>
+                {candidate.categoryMatch ? (
+                  <View style={styles.matchBadgeMuted}>
+                    <Text style={styles.matchBadgeMutedText}>{candidate.categoryMatch.label}</Text>
+                  </View>
+                ) : null}
+              </View>
               <Text style={styles.body}>{candidate.major ?? 'Major not set'} · GPA {candidate.gpa ?? 'N/A'}</Text>
               <Text style={styles.meta}>{candidate.universityName ?? 'University not set'} · {candidate.semesterLabel ?? 'Semester not set'}</Text>
+              <Text style={styles.meta}>Profile strength: {candidate.profileStrength}%</Text>
+              {candidate.matchEvidence[0] ? (
+                <Text style={styles.evidenceText}>{candidate.matchEvidence[0].title}: {candidate.matchEvidence[0].body}</Text>
+              ) : null}
               {candidate.promptFieldLabel ? <Text style={styles.meta}>Prompt: {candidate.promptFieldLabel}</Text> : null}
               {candidate.review?.status && candidate.review.status !== 'none' ? (
                 <Text style={styles.meta}>Review: {candidate.review.status}</Text>
@@ -111,7 +147,7 @@ export default function RecruiterResultsScreen() {
               {candidate.interestRequestStatus ? <Text style={styles.meta}>Request: {candidate.interestRequestStatus}</Text> : null}
             </View>
             <View style={styles.duration}>
-              <Text style={styles.durationText}>00:10</Text>
+              <Text style={styles.durationText}>{candidate.tenSecondVideoUrl ? '10s' : 'Profile'}</Text>
             </View>
           </Pressable>
         ))}
@@ -137,6 +173,7 @@ const recruiterSemesterLabels = new Map<number, string>([
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headerActions: { alignItems: 'flex-end', gap: spacing.xs },
   title: { color: colors.text, ...typography.screenTitle },
   linkText: { color: colors.purple, ...typography.label },
   body: { color: colors.muted, ...typography.body },
@@ -149,10 +186,17 @@ const styles = StyleSheet.create({
   avatarFallback: { alignItems: 'center', justifyContent: 'center', width: 64, height: 76, borderRadius: 8, backgroundColor: colors.primary },
   avatarFallbackText: { color: colors.accent, fontSize: 24, fontWeight: '900' },
   cardBody: { flex: 1 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
   name: { color: colors.text, ...typography.label },
+  matchRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.xs, marginBottom: spacing.xs },
   matchBadge: { alignSelf: 'flex-start', marginTop: spacing.xs, marginBottom: spacing.xs, borderRadius: 999, backgroundColor: colors.accent, paddingHorizontal: spacing.sm, paddingVertical: 3 },
   matchBadgeText: { color: colors.text, ...typography.meta },
+  matchBadgeMuted: { alignSelf: 'flex-start', borderRadius: 999, backgroundColor: colors.surfaceMuted, paddingHorizontal: spacing.sm, paddingVertical: 3 },
+  matchBadgeMutedText: { color: colors.text, ...typography.meta },
+  scoreBadge: { borderRadius: 999, backgroundColor: colors.primary, paddingHorizontal: spacing.sm, paddingVertical: 4 },
+  scoreText: { color: colors.primaryText, fontSize: 11, fontWeight: '900' },
   meta: { marginTop: 3, color: colors.muted, ...typography.meta },
+  evidenceText: { marginTop: spacing.xs, color: colors.text, ...typography.meta },
   duration: { borderRadius: 8, backgroundColor: colors.primary, paddingHorizontal: 8, paddingVertical: 5 },
   durationText: { color: colors.primaryText, fontSize: 11, fontWeight: '900' }
 });
@@ -241,4 +285,18 @@ function getActiveFilterLabels(filters: RecruiterCandidateSearchFilters) {
 
 function getRecruiterSemesterLabel(semesterNumber: number) {
   return recruiterSemesterLabels.get(semesterNumber) ?? semesters.find((semester) => semester.value === semesterNumber)?.label ?? `Semester ${semesterNumber}`;
+}
+
+function buildSearchParams(filters: RecruiterCandidateSearchFilters) {
+  const nextParams: Record<string, string | string[]> = {};
+
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value === undefined || value === '' || (Array.isArray(value) && value.length === 0)) {
+      return;
+    }
+
+    nextParams[key] = Array.isArray(value) ? value.map(String) : String(value);
+  });
+
+  return nextParams;
 }

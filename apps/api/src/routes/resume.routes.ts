@@ -4,6 +4,12 @@ import { requireSupabaseUser } from '../auth/supabaseJwt.js';
 import { getDatabase } from '../db/mongo.js';
 import { findApplicantBySupabaseUserId, updateApplicantOnboardingStatus } from '../repositories/applicants.repo.js';
 import {
+  deleteResumeParsedTextByApplicantId,
+  findResumeParsedTextByApplicantId,
+  serializeResumeParsedText,
+  upsertResumeParsedText
+} from '../repositories/resumeParsedTexts.repo.js';
+import {
   deleteResumeByApplicantId,
   findResumeByApplicantId,
   markResumeSkipped,
@@ -28,6 +34,21 @@ const uploadResumeSchema = z.object({
   fileType: z.literal('pdf'),
   fileSizeBytes: z.number().int().positive().max(maxResumeBytes)
 });
+
+const parsedResumeTextSchema = z.object({
+  text: z.string().trim().min(1).max(200_000),
+  parser: z.enum(['client', 'manual', 'unknown']).optional(),
+  sourceFileName: z.string().trim().min(1).max(240).optional(),
+  extractedSkills: z.array(z.string().trim().min(1).max(80)).max(200).optional()
+});
+
+function getResumeParseStatus(resume: Awaited<ReturnType<typeof findResumeByApplicantId>>, hasParsedText: boolean) {
+  if (!resume || resume.softSkillGenerationStatus === 'skipped') {
+    return 'none';
+  }
+
+  return hasParsedText ? 'ready' : 'needs_extraction';
+}
 
 export async function resumeRoutes(app: FastifyInstance) {
   app.post('/onboarding/resume/skip', { preHandler: requireSupabaseUser }, async (request, reply) => {
@@ -114,6 +135,7 @@ export async function resumeRoutes(app: FastifyInstance) {
       fileType: parsed.data.fileType,
       fileSizeBytes: parsed.data.fileSizeBytes
     });
+    await deleteResumeParsedTextByApplicantId(db, applicant._id);
     const dummyItems = generateDummySoftSkills(`${user.id}:${parsed.data.originalFileName}`);
 
     await saveDummySoftSkills(db, applicant._id, dummyItems);
@@ -138,10 +160,55 @@ export async function resumeRoutes(app: FastifyInstance) {
       return reply.code(404).send({ error: 'Applicant not found' });
     }
 
-    const resume = await findResumeByApplicantId(db, applicant._id);
+    const [resume, parsedText] = await Promise.all([
+      findResumeByApplicantId(db, applicant._id),
+      findResumeParsedTextByApplicantId(db, applicant._id)
+    ]);
 
     return {
-      resume: resume ? serializeResume(resume) : null
+      resume: resume ? serializeResume(resume) : null,
+      parseStatus: getResumeParseStatus(resume, Boolean(parsedText)),
+      parsedTextUpdatedAt: parsedText?.updatedAt.toISOString()
+    };
+  });
+
+  app.post('/resume/parsed-text', { preHandler: requireSupabaseUser }, async (request, reply) => {
+    const user = request.user;
+
+    if (!user) {
+      throw new Error('Authenticated user missing after auth guard');
+    }
+
+    const parsed = parsedResumeTextSchema.safeParse(request.body);
+
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'Invalid parsed resume text payload', issues: parsed.error.issues });
+    }
+
+    const db = await getDatabase();
+    const applicant = await findApplicantBySupabaseUserId(db, user.id);
+
+    if (!applicant) {
+      return reply.code(404).send({ error: 'Applicant not found' });
+    }
+
+    const resume = await findResumeByApplicantId(db, applicant._id);
+
+    if (!resume) {
+      return reply.code(409).send({ error: 'Upload a resume before saving parsed text' });
+    }
+
+    const parsedText = await upsertResumeParsedText(db, {
+      applicantId: applicant._id,
+      resumeId: resume._id,
+      text: parsed.data.text,
+      parser: parsed.data.parser ?? 'client',
+      sourceFileName: parsed.data.sourceFileName ?? resume.originalFileName,
+      extractedSkills: Array.from(new Set((parsed.data.extractedSkills ?? []).map((skill) => skill.trim()).filter(Boolean)))
+    });
+
+    return {
+      parsedText: serializeResumeParsedText(parsedText)
     };
   });
 
@@ -170,6 +237,7 @@ export async function resumeRoutes(app: FastifyInstance) {
     }
 
     await deleteResumeByApplicantId(db, applicant._id);
+    await deleteResumeParsedTextByApplicantId(db, applicant._id);
     await saveDummySoftSkills(db, applicant._id, generateDummySoftSkills(`${user.id}:resume-deleted`));
 
     return {

@@ -102,9 +102,17 @@ export default function RecruiterDashboardScreen() {
       </View>
 
       <View style={styles.quickActions}>
+        <Pressable onPress={() => router.push('/(recruiter)/shortlist')} style={styles.lightButton}>
+          <Ionicons color={colors.text} name="checkmark-circle-outline" size={18} />
+          <Text style={styles.lightButtonText}>Shortlist</Text>
+        </Pressable>
         <Pressable onPress={() => router.push('/(recruiter)/feed')} style={styles.lightButton}>
           <Ionicons color={colors.text} name="play-circle-outline" size={18} />
           <Text style={styles.lightButtonText}>Review feed</Text>
+        </Pressable>
+        <Pressable onPress={() => router.push('/(recruiter)/evidence-queue')} style={styles.lightButton}>
+          <Ionicons color={colors.text} name="analytics-outline" size={18} />
+          <Text style={styles.lightButtonText}>Evidence Queue</Text>
         </Pressable>
         <Pressable onPress={() => router.push('/(recruiter)/bookmarks')} style={styles.lightButton}>
           <Ionicons color={colors.text} name="bookmark-outline" size={18} />
@@ -205,8 +213,8 @@ const styles = StyleSheet.create({
   statusPill: { borderRadius: 999, backgroundColor: colors.accent, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   statusPillText: { color: colors.text, ...typography.meta },
   primaryAction: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, minHeight: controls.buttonHeight, borderRadius: radii.sm, backgroundColor: colors.text },
-  quickActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
-  lightButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, minHeight: 48, borderRadius: radii.sm, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.md },
+  quickActions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.md },
+  lightButton: { flexGrow: 1, flexBasis: '47%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, minHeight: 48, borderRadius: radii.sm, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.md },
   lightButtonText: { color: colors.text, ...typography.label },
   buttonBadge: { minWidth: 22, borderRadius: 999, backgroundColor: colors.accent, paddingHorizontal: 7, paddingVertical: 2 },
   buttonBadgeText: { color: colors.text, fontSize: 11, fontWeight: '900', textAlign: 'center' },

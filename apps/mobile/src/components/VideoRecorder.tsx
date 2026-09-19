@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { NativeEventEmitter, NativeModules, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import * as DocumentPicker from 'expo-document-picker';
-import * as ImagePicker from 'expo-image-picker';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import NativeVideoTrim, { isValidFile, showEditor } from 'react-native-video-trim';
 import { EmptyState } from './EmptyState';
@@ -290,7 +289,7 @@ export function VideoRecorder({
     openTrimEditor(uri);
   }
 
-  async function handlePickVideo() {
+async function handlePickVideo() {
     if (isRecording || recordedUri) {
       return;
     }
@@ -298,6 +297,7 @@ export function VideoRecorder({
     setError(null);
 
     try {
+      const ImagePicker = await import('expo-image-picker');
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
       if (!permission.granted) {
@@ -328,7 +328,12 @@ export function VideoRecorder({
     } catch (pickError) {
       pendingTrimRef.current = false;
       console.log('[video-upload-debug] picker error:', pickError);
-      setError(CLOUD_BACKED_VIDEO_ERROR);
+      const message = pickError instanceof Error ? pickError.message : '';
+      setError(
+        message.includes('ExponentImagePicker')
+          ? 'Video upload from Photos is not available in this build. Reinstall the latest Cato build and try again.'
+          : CLOUD_BACKED_VIDEO_ERROR
+      );
     }
   }
 

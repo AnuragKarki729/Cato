@@ -14,7 +14,13 @@ function getActiveRecruiterTab(pathname: string) {
     return 'feed';
   }
 
-  if (pathname.includes('/search') || pathname.includes('/results')) {
+  if (
+    pathname.includes('/search') ||
+    pathname.includes('/results') ||
+    pathname.includes('/evidence-queue') ||
+    pathname.includes('/shortlist') ||
+    pathname.includes('/comparison')
+  ) {
     return 'search';
   }
 

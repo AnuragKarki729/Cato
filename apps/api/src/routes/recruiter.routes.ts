@@ -10,14 +10,17 @@ import {
   countRecruiterRecentInterestRequests,
   countRecruiterInterestRequests,
   countRecruiterMessages,
+  countUnreadRecruiterMessages,
   createRecruiterMessage,
   deleteRecruiterBookmark,
   expireStaleInterestRequests,
+  findConversationMessages,
   findRecruiterInterestRequest,
   findRecruiterInterestRequests,
   findRecruiterBookmarks,
   findRecruiterBySupabaseUserId,
   findRecruiterMessages,
+  markRecruiterConversationRead,
   recruiterBookmarksCollection,
   RECRUITER_DAILY_INTEREST_REQUEST_LIMIT,
   RECRUITER_PENDING_INTEREST_REQUEST_LIMIT,
@@ -35,12 +38,28 @@ import {
   findRecruiterSavedFilters,
   serializeRecruiterSavedFilter
 } from '../repositories/recruiterSavedFilters.repo.js';
+import {
+  createRecruiterJob,
+  findRecruiterJobById,
+  findRecruiterJobs,
+  serializeRecruiterJob,
+  updateRecruiterJob
+} from '../repositories/recruiterJobs.repo.js';
 import { createAppNotification } from '../repositories/notifications.repo.js';
 import { recordApplicantActivity } from '../repositories/applicantActivities.repo.js';
+import {
+  findApplicantAccomplishmentsByApplicantId,
+  findApplicantVideoLinks,
+  findApplicantVideosByApplicantId,
+  serializeApplicantAccomplishment,
+  serializeApplicantVideo
+} from '../repositories/applicantVideos.repo.js';
 import { claimAppUserRole } from '../repositories/userRoles.repo.js';
 import {
+  enrichCandidateForRecruiter,
   findRecruiterCandidateById,
   findRecruiterCandidates,
+  findRecruiterEvidenceQueue,
   serializeRecruiterCandidate
 } from '../services/recruiterCandidates.service.js';
 import { deleteRecruiterAccount } from '../services/accountDeletion.service.js';
@@ -112,7 +131,12 @@ const contactCandidateSchema = z.object({
 const interestRequestSchema = z.object({
   reason: z.string().trim().min(1).max(500),
   resend: z.boolean().optional(),
-  roleCategory: z.string().trim().min(1).max(80).optional()
+  roleCategory: z.string().trim().min(1).max(80).optional(),
+  sourceType: z.enum(['profile', 'video', 'search', 'match_proposal']).optional(),
+  sourceVideoId: z.string().min(1).optional(),
+  sourceProjectId: z.string().min(1).optional(),
+  sourceInternshipId: z.string().min(1).optional(),
+  sourceAccomplishmentId: z.string().min(1).optional()
 });
 
 const candidateReviewSchema = z.object({
@@ -144,6 +168,45 @@ const savedFilterSchema = z.object({
 
 const savedFilterParamsSchema = z.object({
   id: z.string().min(1)
+});
+
+const recruiterJobParamsSchema = z.object({
+  id: z.string().min(1)
+});
+
+const recruiterJobSchema = z.object({
+  companyName: z.string().trim().min(1).max(120).optional(),
+  title: z.string().trim().min(1).max(120),
+  roleCategory: z.string().trim().min(1).max(80),
+  targetMajors: z.array(z.string().trim().min(1).max(120)).max(30).optional(),
+  targetCategories: z.array(z.string().trim().min(1).max(80)).max(10).optional(),
+  requiredSkills: z.array(z.string().trim().min(1).max(80)).max(100).optional(),
+  preferredSkills: z.array(z.string().trim().min(1).max(80)).max(100).optional(),
+  desiredDepth: z
+    .object({
+      type: z.enum(['skill', 'category']),
+      id: z.string().trim().min(1).max(80)
+    })
+    .optional(),
+  searchText: z.string().trim().max(500).optional(),
+  location: z.string().trim().max(120).optional(),
+  remotePolicy: z.string().trim().max(80).optional(),
+  employmentType: z.enum(['internship', 'full_time', 'part_time', 'contract']),
+  minGpa: z.number().min(0).max(4).optional(),
+  preferredSemesterRange: z
+    .object({
+      min: z.number().int().min(1).max(100).optional(),
+      max: z.number().int().min(1).max(100).optional()
+    })
+    .optional(),
+  capacity: z
+    .object({
+      maxShortlist: z.number().int().min(1).max(250).optional(),
+      maxAutoProposalsPerRun: z.number().int().min(1).max(100).optional(),
+      maxActiveInterestRequests: z.number().int().min(1).max(250).optional()
+    })
+    .optional(),
+  status: z.enum(['active', 'paused', 'closed']).optional()
 });
 
 function normalizeReviewTags(tags: string[] | undefined) {
@@ -363,6 +426,41 @@ export async function recruiterRoutes(app: FastifyInstance) {
     };
   });
 
+  app.get('/recruiter/evidence-queue', { preHandler: requireSupabaseUser }, async (request, reply) => {
+    const parsedQuery = candidatesQuerySchema.safeParse(request.query);
+
+    if (!parsedQuery.success) {
+      return reply.code(400).send({ error: 'Invalid evidence queue query' });
+    }
+
+    const context = await getRecruiterContext(request, reply);
+
+    if (!context) {
+      return;
+    }
+
+    await expireStaleInterestRequests(context.db);
+    return {
+      queue: await findRecruiterEvidenceQueue(context.db, context.recruiter._id, {
+        query: parsedQuery.data.q,
+        categoryFieldId: parsedQuery.data.categoryFieldId,
+        categoryFieldIds: parsedQuery.data.categoryFieldIds,
+        university: parsedQuery.data.university,
+        universities: parsedQuery.data.universities,
+        major: parsedQuery.data.major,
+        majors: parsedQuery.data.majors,
+        semesterNumber: parsedQuery.data.semesterNumber,
+        semesterNumbers: parsedQuery.data.semesterNumbers,
+        gpaMin: parsedQuery.data.gpaMin,
+        gpaMax: parsedQuery.data.gpaMax,
+        hasInternship: parsedQuery.data.hasInternship,
+        interestStatus: parsedQuery.data.interestStatus,
+        bookmarkedOnly: parsedQuery.data.bookmarkedOnly,
+        reviewStatus: parsedQuery.data.reviewStatus
+      })
+    };
+  });
+
   app.get('/recruiter/saved-filters', { preHandler: requireSupabaseUser }, async (request, reply) => {
     const context = await getRecruiterContext(request, reply);
 
@@ -373,6 +471,94 @@ export async function recruiterRoutes(app: FastifyInstance) {
     const filters = await findRecruiterSavedFilters(context.db, context.recruiter._id);
     return {
       filters: filters.map(serializeRecruiterSavedFilter)
+    };
+  });
+
+  app.get('/recruiter/jobs', { preHandler: requireSupabaseUser }, async (request, reply) => {
+    const context = await getRecruiterContext(request, reply);
+
+    if (!context) {
+      return;
+    }
+
+    const jobs = await findRecruiterJobs(context.db, context.recruiter._id);
+    return {
+      jobs: jobs.map(serializeRecruiterJob)
+    };
+  });
+
+  app.post('/recruiter/jobs', { preHandler: requireSupabaseUser }, async (request, reply) => {
+    const parsed = recruiterJobSchema.safeParse(request.body);
+
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'Invalid recruiter job payload', issues: parsed.error.issues });
+    }
+
+    const context = await getRecruiterContext(request, reply);
+
+    if (!context) {
+      return;
+    }
+
+    const job = await createRecruiterJob(context.db, context.recruiter._id, {
+      ...parsed.data,
+      companyName: parsed.data.companyName ?? context.recruiter.companyName
+    });
+
+    return {
+      job: serializeRecruiterJob(job)
+    };
+  });
+
+  app.put('/recruiter/jobs/:id', { preHandler: requireSupabaseUser }, async (request, reply) => {
+    const params = recruiterJobParamsSchema.safeParse(request.params);
+    const parsed = recruiterJobSchema.safeParse(request.body);
+
+    if (!params.success || !ObjectId.isValid(params.data.id) || !parsed.success) {
+      return reply.code(400).send({ error: 'Invalid recruiter job payload' });
+    }
+
+    const context = await getRecruiterContext(request, reply);
+
+    if (!context) {
+      return;
+    }
+
+    const job = await updateRecruiterJob(context.db, context.recruiter._id, new ObjectId(params.data.id), {
+      ...parsed.data,
+      companyName: parsed.data.companyName ?? context.recruiter.companyName
+    });
+
+    if (!job) {
+      return reply.code(404).send({ error: 'Recruiter job not found' });
+    }
+
+    return {
+      job: serializeRecruiterJob(job)
+    };
+  });
+
+  app.get('/recruiter/jobs/:id', { preHandler: requireSupabaseUser }, async (request, reply) => {
+    const params = recruiterJobParamsSchema.safeParse(request.params);
+
+    if (!params.success || !ObjectId.isValid(params.data.id)) {
+      return reply.code(400).send({ error: 'Invalid recruiter job id' });
+    }
+
+    const context = await getRecruiterContext(request, reply);
+
+    if (!context) {
+      return;
+    }
+
+    const job = await findRecruiterJobById(context.db, new ObjectId(params.data.id), context.recruiter._id);
+
+    if (!job) {
+      return reply.code(404).send({ error: 'Recruiter job not found' });
+    }
+
+    return {
+      job: serializeRecruiterJob(job)
     };
   });
 
@@ -457,6 +643,40 @@ export async function recruiterRoutes(app: FastifyInstance) {
     return { candidate };
   });
 
+  app.get('/recruiter/candidates/:id/profile-media', { preHandler: requireSupabaseUser }, async (request, reply) => {
+    const params = candidateParamsSchema.safeParse(request.params);
+
+    if (!params.success || !ObjectId.isValid(params.data.id)) {
+      return reply.code(400).send({ error: 'Invalid candidate id' });
+    }
+
+    const context = await getRecruiterContext(request, reply);
+
+    if (!context) {
+      return;
+    }
+
+    const applicant = await findCompletedCandidateById(context.db, params.data.id);
+
+    if (!applicant) {
+      return reply.code(404).send({ error: 'Candidate not found' });
+    }
+
+    const [videos, accomplishments] = await Promise.all([
+      findApplicantVideosByApplicantId(context.db, applicant._id, false),
+      findApplicantAccomplishmentsByApplicantId(context.db, applicant._id, false)
+    ]);
+    const links = await findApplicantVideoLinks(context.db, videos.map((video) => video._id));
+
+    return {
+      videos: videos.map((video) => ({
+        ...serializeApplicantVideo(video, links),
+        applicantName: applicant.name
+      })),
+      accomplishments: accomplishments.map(serializeApplicantAccomplishment)
+    };
+  });
+
   app.get('/recruiter/bookmarks', { preHandler: requireSupabaseUser }, async (request, reply) => {
     const context = await getRecruiterContext(request, reply);
 
@@ -472,7 +692,9 @@ export async function recruiterRoutes(app: FastifyInstance) {
           _id: bookmark.applicantId,
           onboardingStatus: 'onboarding_complete'
         });
-        return applicant ? serializeRecruiterCandidate(context.db, applicant, context.recruiter._id) : null;
+        return applicant
+          ? enrichCandidateForRecruiter(await serializeRecruiterCandidate(context.db, applicant, context.recruiter._id), { bookmarkedOnly: true })
+          : null;
       })
     );
 
@@ -666,11 +888,38 @@ export async function recruiterRoutes(app: FastifyInstance) {
       return reply.code(429).send({ error: 'Daily interest request limit reached. Try again later.' });
     }
 
+    const invalidSourceId =
+      (parsed.data.sourceVideoId && !ObjectId.isValid(parsed.data.sourceVideoId)) ||
+      (parsed.data.sourceProjectId && !ObjectId.isValid(parsed.data.sourceProjectId)) ||
+      (parsed.data.sourceInternshipId && !ObjectId.isValid(parsed.data.sourceInternshipId)) ||
+      (parsed.data.sourceAccomplishmentId && !ObjectId.isValid(parsed.data.sourceAccomplishmentId));
+
+    if (invalidSourceId) {
+      return reply.code(400).send({ error: 'Invalid interest request source id' });
+    }
+
+    const sourceIds = {
+      ...(parsed.data.sourceVideoId && ObjectId.isValid(parsed.data.sourceVideoId) ? { sourceVideoId: new ObjectId(parsed.data.sourceVideoId) } : {}),
+      ...(parsed.data.sourceProjectId && ObjectId.isValid(parsed.data.sourceProjectId) ? { sourceProjectId: new ObjectId(parsed.data.sourceProjectId) } : {}),
+      ...(parsed.data.sourceInternshipId && ObjectId.isValid(parsed.data.sourceInternshipId)
+        ? { sourceInternshipId: new ObjectId(parsed.data.sourceInternshipId) }
+        : {}),
+      ...(parsed.data.sourceAccomplishmentId && ObjectId.isValid(parsed.data.sourceAccomplishmentId)
+        ? { sourceAccomplishmentId: new ObjectId(parsed.data.sourceAccomplishmentId) }
+        : {})
+    };
+
     const interestRequest = await upsertRecruiterInterestRequest(
       context.db,
       context.recruiter._id,
       new ObjectId(params.data.id),
-      parsed.data
+      {
+        reason: parsed.data.reason,
+        resend: parsed.data.resend,
+        roleCategory: parsed.data.roleCategory,
+        sourceType: parsed.data.sourceType,
+        ...sourceIds
+      }
     );
     const notificationPayload = {
       requestId: interestRequest._id.toString(),
@@ -745,6 +994,13 @@ export async function recruiterRoutes(app: FastifyInstance) {
       body: parsed.data.body,
       createdAt: new Date().toISOString()
     });
+    publishApplicantEvent(applicant.supabaseUserId, 'message_sent', {
+      type: 'message_sent',
+      requestId: interestRequest._id.toString(),
+      recruiterId: context.recruiter._id.toString(),
+      body: parsed.data.body,
+      createdAt: new Date().toISOString()
+    });
     return { sent: true };
   });
 
@@ -755,7 +1011,10 @@ export async function recruiterRoutes(app: FastifyInstance) {
       return;
     }
 
-    const messages = await findRecruiterMessages(context.db, context.recruiter._id);
+    const [messages, unreadCount] = await Promise.all([
+      findRecruiterMessages(context.db, context.recruiter._id),
+      countUnreadRecruiterMessages(context.db, context.recruiter._id)
+    ]);
     const serialized = await Promise.all(
       messages.map(async (message) => {
         const applicant = await applicantsCollection(context.db).findOne({ _id: message.applicantId });
@@ -763,6 +1022,8 @@ export async function recruiterRoutes(app: FastifyInstance) {
           id: message._id.toString(),
           candidateId: message.applicantId.toString(),
           candidateName: applicant?.name,
+          senderRole: message.senderRole ?? 'recruiter',
+          isUnreadForViewer: message.senderRole === 'applicant' && !message.readByRecruiterAt,
           body: message.body,
           createdAt: message.createdAt.toISOString()
         };
@@ -770,7 +1031,49 @@ export async function recruiterRoutes(app: FastifyInstance) {
     );
 
     return {
-      messages: serialized
+      messages: serialized,
+      unreadCount
+    };
+  });
+
+  app.get('/recruiter/candidates/:id/messages', { preHandler: requireSupabaseUser }, async (request, reply) => {
+    const params = candidateParamsSchema.safeParse(request.params);
+
+    if (!params.success || !ObjectId.isValid(params.data.id)) {
+      return reply.code(400).send({ error: 'Invalid candidate id' });
+    }
+
+    const context = await getRecruiterContext(request, reply);
+
+    if (!context) {
+      return;
+    }
+
+    const applicant = await findCompletedCandidateById(context.db, params.data.id);
+
+    if (!applicant) {
+      return reply.code(404).send({ error: 'Candidate not found' });
+    }
+
+    const interestRequest = await findRecruiterInterestRequest(context.db, context.recruiter._id, applicant._id);
+
+    if (interestRequest?.status !== 'accepted') {
+      return reply.code(409).send({ error: 'Candidate must accept your interest request before messaging opens' });
+    }
+
+    const messages = await findConversationMessages(context.db, context.recruiter._id, applicant._id);
+    await markRecruiterConversationRead(context.db, context.recruiter._id, applicant._id);
+
+    return {
+      messages: messages.map((message) => ({
+        id: message._id.toString(),
+        candidateId: message.applicantId.toString(),
+        candidateName: applicant.name,
+        senderRole: message.senderRole ?? 'recruiter',
+        isUnreadForViewer: message.senderRole === 'applicant' && !message.readByRecruiterAt,
+        body: message.body,
+        createdAt: message.createdAt.toISOString()
+      }))
     };
   });
 }

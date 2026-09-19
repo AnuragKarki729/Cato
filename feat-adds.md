@@ -51,6 +51,15 @@ Cato is a verified warm-intro marketplace for early talent. Students build signa
    - Filter by major, university, semester, GPA, internship experience, role interest, and location preference.
    - Applicant intent must be separated so students seeking internships do not compete directly against students seeking full-time placement jobs.
    - Recruiter search/ranking should support intent-specific pools: `internship` and `full_time_placement`.
+   - Dynamic recruiter search is a runtime matching path, not a persisted job by default.
+   - Free-text searches such as `software engineer with Python, SQL, React, AWS` should deterministically normalize into a temporary `SearchSpec`.
+   - Years of experience mentioned in recruiter text should not be treated literally for college students; map it to skill evidence strength across resume text, projects, internships, and profile signals.
+   - Structured controls such as graduated yes/no, international student yes/no, GPA, semester, category, and target skills are additive to free text.
+   - V1 dynamic search should be structured-first rather than text-first: employment type, field/category, skills, graduation status, GPA, semester, major, university, and later international-student status.
+   - Field/category and skill selectors should use search-to-select dropdowns.
+   - Recruiters can add missing fields/categories and skills.
+   - Recruiter-added fields/categories and skills must be lowercased, standardized, deduplicated, and saved to a shared backend option catalog.
+   - Only when a recruiter explicitly saves a search should the backend persist it as a reusable recruiter job/role.
    - Support specific university search and nearby university/location-radius filtering.
    - Support recruiter-created saved university lists such as `Target Schools`.
    - Avoid making prestige-only categories such as `Ivy League only` a first-class public filter because it can reinforce prestige bias.
