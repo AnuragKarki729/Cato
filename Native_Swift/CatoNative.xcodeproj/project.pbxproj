@@ -429,6 +429,9 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 3R89593ZKG;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CATO_API_BASE_URL = "https://cato-api.up.railway.app";
+				CATO_SUPABASE_ANON_KEY = "sb_publishable_cXUqQwc81ueHgGs4uhASJQ__ezqXU_Q";
+				CATO_SUPABASE_URL = "https://plsmirtnuhrojwztonkt.supabase.co";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = CatoNativeApp/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
@@ -454,6 +457,9 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 3R89593ZKG;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CATO_API_BASE_URL = "https://cato-api.up.railway.app";
+				CATO_SUPABASE_ANON_KEY = "sb_publishable_cXUqQwc81ueHgGs4uhASJQ__ezqXU_Q";
+				CATO_SUPABASE_URL = "https://plsmirtnuhrojwztonkt.supabase.co";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = CatoNativeApp/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;

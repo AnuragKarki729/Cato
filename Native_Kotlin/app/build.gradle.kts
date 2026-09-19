@@ -13,9 +13,17 @@ val localProperties = Properties().apply {
     }
 }
 
+val publicBuildDefaults = mapOf(
+    "CATO_SUPABASE_URL" to "https://plsmirtnuhrojwztonkt.supabase.co",
+    "CATO_SUPABASE_ANON_KEY" to "sb_publishable_cXUqQwc81ueHgGs4uhASJQ__ezqXU_Q",
+    "CATO_API_BASE_URL" to "https://cato-api.up.railway.app",
+    "CATO_GOOGLE_WEB_CLIENT_ID" to "512338045024-5t2gqbag5romr1j30kac4kejnl72h2dl.apps.googleusercontent.com",
+)
+
 fun localProperty(name: String): String {
     return localProperties.getProperty(name)
         ?: providers.gradleProperty(name).orNull
+        ?: publicBuildDefaults[name]
         ?: ""
 }
 
